@@ -1,33 +1,32 @@
-# Rhythm Reader handoff — repair candidate
+# Rhythm Reader handoff — independent verification
 
-## What changed
+## Status: FAIL
 
-- Replaced the hand-maintained worker with `scripts/generate-sw.mjs`, which runs after every Vite build. It fingerprints the release (`package.json` version plus built content), writes `dist/sw.js`, and precaches every built HTML page, static shell file, and every hashed Vite JS/CSS file under `waitUntil`.
-- Navigation requests are network-first with a cached document fallback. Asset requests are cache-first and never receive an HTML fallback. The asset lookup intentionally ignores `Vary: Origin`, which Vite uses and which otherwise prevents a precached module from matching the browser's module request.
-- Added an explicit update path: a new worker waits, the app shows **Reload update**, and only that action sends `SKIP_WAITING`; `controllerchange` then reloads into the new release. `/sw.js` is served with `Cache-Control: no-cache` in the Static Web Apps configuration.
-- Added release query metadata to the generated manifest start URL. The trainer, microphone path, local history/calibration, and Sociobot license behavior are unchanged.
-- Raised the former 390 px misses: skip link, home link, footer links, range controls, and the independent checkbox all have at least 44 CSS px hit areas. The segmented radio choices retain their 44 px labelled switch surface.
-- Deferred the below-the-fold mobile collage image so first paint prioritizes the practice headline without changing the product visual system or artwork.
+Candidate `1fed988de87f5df8360a95fca0c64659129ceb97` was independently verified from a clean detached worktree on 27 August 2026. <https://rhythm-reader.sociobot.in> matches its generated artifacts exactly, but the release **must not be accepted** because malformed yet parseable localStorage can blank the app.
 
-## Run and verify
+## What was verified
+
+- `npm ci` completed with zero production audit vulnerabilities; `npm test` passed 7/7; exact `npm run build` passed (`tsc -b`, Vite, generated service worker); `npm run test:browser` passed 3/3 after installing the test browser.
+- Normal 4/4 March practice, timing feedback and results, 6/8 / 4-bar / 160 BPM boundary settings, keyboard Space input, mobile 390 px, reduced motion, mic-denial recovery, invalid-license recovery, privacy/terms, accessibility, offline reload, and service-worker update behavior were exercised.
+- Local Lighthouse mobile: performance 97, accessibility 100, best practices 100, SEO 92; LCP 1,302 ms, CLS 0, TBT 204 ms. Built JS is 23,978 B (9,480 B gzip) and CSS 16,107 B (4,660 B gzip).
+- Live hashes match candidate `dist/` for HTML, JS, CSS, art, manifest, worker, legal pages, and favicon. Live security headers and caching are present; the new service worker precaches assets and passed offline reload.
+
+## Blocking defect
+
+`rr_settings:v1` with valid JSON but invalid enum/range values causes `Cannot read properties of undefined (reading 'length')`, leaving a blank `#app` and no h1. `rr_history:v1` containing `{}` or `[null]` similarly crashes the page. This was reproduced locally and live.
+
+The storage reader catches syntax errors only; it needs structural validation and a default/reset path. Add automated coverage for those cases, deploy the repair, then repeat the local and live verification.
+
+## How to verify after the repair
 
 ```sh
 npm ci
 npm test
 npm run build
+npx playwright install chromium
 npm run test:browser
-npm run preview
 ```
 
-Verification completed on 27 August 2026:
+In a clean browser profile, set invalid-but-parseable `rr_settings:v1` and `rr_history:v1`, reload, and confirm the default trainer renders with no page errors. Repeat that check on the deployed URL, then check service-worker offline reload and update activation.
 
-- `npm ci`: passed, 0 audit vulnerabilities.
-- `npm test`: passed, 7/7 tests.
-- `npm run build`: passed. It produced `dist/` and a generated release worker (`1.0.1-c37c07a4f01b` on the final verification build) with 9 precached files, including the current two hashed JS/CSS assets.
-- `npm run test:browser`: passed, 3/3 Chromium checks. A fresh profile installed the worker, went offline, reloaded, and rendered the `h1` plus tap pad with no page errors; a failed unknown JS request failed rather than returning the app document. A previously controlled client then found the waiting worker, displayed **Reload update**, explicitly activated it, and transitioned to the new cache. The 390 px shell had no visible sub-44 px independent controls; axe had no serious or critical findings.
-- Local production-preview Lighthouse, 390×844 mobile simulated throttling: Performance **99**, Accessibility **100**, LCP **1,254 ms**, CLS **0**, TBT **111 ms**. Initial JS is 23.98 KB (9.48 KB gzip) and CSS is 16.11 KB (4.66 KB gzip).
-- Live-parity check was run against `https://rhythm-reader.sociobot.in`: it still serves the previous `index-D3KsWn3g.js` and 942-byte legacy service worker, whereas this candidate emits `index-CWrJXYyu.js` and the generated worker. That is expected before deployment and confirms the live site has not been accidentally treated as verified repair output.
-
-## Deployment follow-up
-
-The repository is ready to deploy as static `dist/`. After the factory deploys this commit, re-run the live cache-cleared offline reload, old-controlled-client update, and mobile Lighthouse checks against the deployed URL; the currently live pre-repair build cannot satisfy those release assertions until it is replaced.
+See `.factory/verification-2.md` for commands, exact evidence, the candidate/deployment comparison, and the complete defect report.
