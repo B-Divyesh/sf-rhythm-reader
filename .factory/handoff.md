@@ -1,6 +1,6 @@
 # Rhythm Reader handoff — persisted-state recovery repair
 
-## Status: ready for Standard static deployment
+## Status: deployed — Standard static
 
 This repair resolves the release blocker reported against candidate `1fed988de87f5df8360a95fca0c64659129ceb97`: valid JSON with an invalid shape or values in `rr_settings:v1` or `rr_history:v1` can no longer blank the trainer.
 
@@ -34,7 +34,14 @@ Completed locally on 27 August 2026:
 
 ## Deployment and live verification
 
-Deploy the built `dist/` directory as the `rhythm-reader` **Standard** Azure Static Web App. Then run the same malformed-localStorage reload regression on `https://rhythm-reader.sociobot.in`, along with the offline reload and update activation tests. This section is updated with the resulting release URL and evidence after deployment.
+Deployed `dist/` to the `rhythm-reader` **Standard** Azure Static Web App on 27 August 2026. The public URL is <https://rhythm-reader.sociobot.in>.
+
+- Deployment `03269ac5-a633-4288-ae4e-c93591250a67` completed successfully; HTTPS returned 200.
+- `verify-url.sh` on the live URL reported no console or page errors, and passed title/lang/one h1/main/alt checks at desktop and 390 px mobile.
+- Live Playwright regression seeded the exact invalid settings object and malformed history array, then confirmed the visible repair notice, default 84 BPM trainer, normalized default settings, empty normalized history, and no errors.
+- The same fresh live client was controlled by the service worker and reloaded offline with the trainer h1 intact.
+- Live 390 px Playwright aXe scan found **0 violations** (0 serious/critical).
+- The local browser suite verifies the separate old-client update activation path; a deliberate live release update is not triggered during post-deploy verification.
 
 ## Known gaps
 
