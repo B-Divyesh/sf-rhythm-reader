@@ -173,6 +173,11 @@
       "degree": 8
     },
     {
+      "id": "src_rhythm_generatepattern",
+      "label": "generatePattern()",
+      "degree": 7
+    },
+    {
       "id": "src_main_finishtake",
       "label": "finishTake()",
       "degree": 7
@@ -183,18 +188,13 @@
       "degree": 7
     },
     {
-      "id": "src_rhythm_generatepattern",
-      "label": "generatePattern()",
-      "degree": 7
-    },
-    {
       "id": "src_storage_savesettings",
       "label": "saveSettings()",
       "degree": 6
     },
     {
-      "id": "package_scripts",
-      "label": "scripts",
+      "id": "src_storage_recorddrill",
+      "label": "recordDrill()",
       "degree": 5
     },
     {
@@ -210,22 +210,11 @@
   ],
   "surprises": [
     {
-      "source": "render()",
-      "target": "streakDays()",
+      "source": "settingChanged()",
+      "target": "generatePattern()",
       "source_files": [
         "src/main.ts",
-        "src/storage.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities"
-    },
-    {
-      "source": "beginTake()",
-      "target": "saveSettings()",
-      "source_files": [
-        "src/main.ts",
-        "src/storage.ts"
+        "src/rhythm.ts"
       ],
       "confidence": "EXTRACTED",
       "relation": "calls",
@@ -245,6 +234,17 @@
     {
       "source": "finishTake()",
       "target": "recordDrill()",
+      "source_files": [
+        "src/main.ts",
+        "src/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "beginTake()",
+      "target": "saveSettings()",
       "source_files": [
         "src/main.ts",
         "src/storage.ts"
