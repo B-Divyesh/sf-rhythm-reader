@@ -1,32 +1,6 @@
 {
   "communities": {
     "0": [
-      "axe_core_playwright",
-      "package",
-      "package_devdependencies",
-      "package_devdependencies_axe_core_playwright",
-      "package_devdependencies_playwright_test",
-      "package_devdependencies_types_node",
-      "package_devdependencies_typescript",
-      "package_devdependencies_vite",
-      "package_devdependencies_vitest",
-      "package_name",
-      "package_private",
-      "package_scripts",
-      "package_scripts_build",
-      "package_scripts_dev",
-      "package_scripts_preview",
-      "package_scripts_test",
-      "package_scripts_test_browser",
-      "package_type",
-      "package_version",
-      "playwright_test",
-      "types_node",
-      "typescript",
-      "vite",
-      "vitest"
-    ],
-    "1": [
       "src_main_newpattern",
       "src_rhythm",
       "src_rhythm_beatsperbar",
@@ -47,8 +21,32 @@
       "src_types_pattern",
       "src_types_rhythmnote",
       "src_types_scoreresult",
+      "src_types_settings",
       "src_types_style",
       "src_types_timingkind"
+    ],
+    "1": [
+      "src_storage",
+      "src_storage_dayrecord",
+      "src_storage_defaultsettings",
+      "src_storage_input_modes",
+      "src_storage_isintegerinrange",
+      "src_storage_isoneof",
+      "src_storage_isplainobject",
+      "src_storage_isvaliddate",
+      "src_storage_markrepaired",
+      "src_storage_meters",
+      "src_storage_readhistory",
+      "src_storage_readjson",
+      "src_storage_readsettings",
+      "src_storage_recorddrill",
+      "src_storage_samejson",
+      "src_storage_streakdays",
+      "src_storage_styles",
+      "src_storage_takestoragerecoverynotice",
+      "src_storage_test",
+      "src_storage_test_memory",
+      "src_storage_writejson"
     ],
     "2": [
       "ref_dom",
@@ -73,24 +71,34 @@
       "tsconfig_include"
     ],
     "3": [
-      "src_license",
-      "src_license_capturereturnedlicense",
-      "src_license_hasoptimisticunlock",
-      "src_license_storelicense",
-      "src_license_verdict",
-      "src_license_verifylicense",
-      "src_main",
-      "src_main_calibrationexpected",
-      "src_main_calibrationsamples",
-      "src_main_historyrecords",
-      "src_main_isunlocked",
-      "src_main_mount",
-      "src_main_pattern",
-      "src_main_phase",
-      "src_main_settings",
-      "src_main_taps"
+      "axe_core_playwright",
+      "package_devdependencies",
+      "package_devdependencies_axe_core_playwright",
+      "package_devdependencies_playwright_test",
+      "package_devdependencies_types_node",
+      "package_devdependencies_typescript",
+      "package_devdependencies_vite",
+      "package_devdependencies_vitest",
+      "playwright_test",
+      "types_node",
+      "typescript",
+      "vite",
+      "vitest"
     ],
     "4": [
+      "package",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_preview",
+      "package_scripts_test",
+      "package_scripts_test_browser",
+      "package_type",
+      "package_version"
+    ],
+    "5": [
       "scripts_generate_sw",
       "scripts_generate_sw_dist",
       "scripts_generate_sw_filesin",
@@ -103,27 +111,29 @@
       "scripts_generate_sw_precachefiles",
       "scripts_generate_sw_root"
     ],
-    "5": [
-      "src_storage",
-      "src_storage_dayrecord",
-      "src_storage_defaultsettings",
-      "src_storage_readhistory",
-      "src_storage_readsettings",
-      "src_storage_recorddrill",
-      "src_storage_streakdays",
-      "src_storage_test",
-      "src_storage_test_memory",
-      "src_types_settings"
-    ],
     "6": [
-      "src_license_checkouturl",
-      "src_main_calendar",
-      "src_main_render",
-      "src_main_scoresvg",
-      "src_rhythm_beatlabel",
-      "src_rhythm_spokencount"
+      "src_main",
+      "src_main_calibrationexpected",
+      "src_main_calibrationsamples",
+      "src_main_historyrecords",
+      "src_main_isunlocked",
+      "src_main_mount",
+      "src_main_pattern",
+      "src_main_phase",
+      "src_main_settings",
+      "src_main_storagerecoverynotice",
+      "src_main_taps"
     ],
     "7": [
+      "src_license",
+      "src_license_capturereturnedlicense",
+      "src_license_checkouturl",
+      "src_license_hasoptimisticunlock",
+      "src_license_storelicense",
+      "src_license_verdict",
+      "src_license_verifylicense"
+    ],
+    "8": [
       "src_main_announce",
       "src_main_begintake",
       "src_main_clicksound",
@@ -131,47 +141,56 @@
       "src_main_registertap",
       "src_main_startmicrophone"
     ],
-    "8": [
+    "9": [
+      "src_main_calendar",
+      "src_main_render",
+      "src_main_scoresvg",
+      "src_rhythm_beatlabel",
+      "src_rhythm_spokencount"
+    ],
+    "10": [
       "src_main_calibrationtap",
       "src_main_finishcalibration",
       "src_main_opendialog",
       "src_main_startcalibration"
     ],
-    "9": [
+    "11": [
       "src_main_finishtake",
       "src_main_settingchanged",
       "src_main_stopmicrophone",
       "src_storage_savesettings"
     ],
-    "10": [
+    "12": [
       "tests_pwa_spec",
       "tests_pwa_spec_waitforcontrol"
     ],
-    "11": [
+    "13": [
       "playwright_config"
     ],
-    "12": [
+    "14": [
       "src_vite_env_d"
     ],
-    "13": [
+    "15": [
       "tests_smoke_spec"
     ]
   },
   "cohesion": {
-    "0": 0.08333333333333333,
-    "1": 0.13852813852813853,
+    "0": 0.13043478260869565,
+    "1": 0.2,
     "2": 0.1,
-    "3": 0.15833333333333333,
+    "3": 0.15384615384615385,
     "4": 0.18181818181818182,
-    "5": 0.26666666666666666,
-    "6": 0.4,
-    "7": 0.4666666666666667,
-    "8": 0.6666666666666666,
+    "5": 0.18181818181818182,
+    "6": 0.18181818181818182,
+    "7": 0.2857142857142857,
+    "8": 0.4666666666666667,
     "9": 0.5,
-    "10": 1.0,
-    "11": 1.0,
+    "10": 0.6666666666666666,
+    "11": 0.5,
     "12": 1.0,
-    "13": 1.0
+    "13": 1.0,
+    "14": 1.0,
+    "15": 1.0
   },
   "gods": [
     {
@@ -183,6 +202,16 @@
       "id": "src_main_render",
       "label": "render()",
       "degree": 13
+    },
+    {
+      "id": "src_storage_readhistory",
+      "label": "readHistory()",
+      "degree": 11
+    },
+    {
+      "id": "src_storage_readsettings",
+      "label": "readSettings()",
+      "degree": 10
     },
     {
       "id": "src_main_begintake",
@@ -207,22 +236,12 @@
     {
       "id": "src_storage_savesettings",
       "label": "saveSettings()",
-      "degree": 6
+      "degree": 7
     },
     {
       "id": "package_scripts",
       "label": "scripts",
       "degree": 6
-    },
-    {
-      "id": "src_storage_recorddrill",
-      "label": "recordDrill()",
-      "degree": 5
-    },
-    {
-      "id": "src_main_getaudio",
-      "label": "getAudio()",
-      "degree": 5
     }
   ],
   "surprises": [
@@ -249,8 +268,19 @@
       "why": "bridges separate communities"
     },
     {
-      "source": "finishTake()",
-      "target": "recordDrill()",
+      "source": "render()",
+      "target": "checkoutUrl()",
+      "source_files": [
+        "src/main.ts",
+        "src/license.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "render()",
+      "target": "streakDays()",
       "source_files": [
         "src/main.ts",
         "src/storage.ts"
@@ -261,17 +291,6 @@
     },
     {
       "source": "beginTake()",
-      "target": "saveSettings()",
-      "source_files": [
-        "src/main.ts",
-        "src/storage.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities"
-    },
-    {
-      "source": "finishCalibration()",
       "target": "saveSettings()",
       "source_files": [
         "src/main.ts",
