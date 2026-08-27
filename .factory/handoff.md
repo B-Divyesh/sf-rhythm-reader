@@ -1,37 +1,13 @@
-# Rhythm Reader handoff — FAIL
+# Rhythm Reader handoff — repair candidate
 
-## Independent verification status (supersedes the builder verification below)
+## What changed
 
-**FAIL — do not release this candidate as an offline-capable PWA.**
-
-- Tested candidate: `04716b684d98e71614c1d7c63098de25da89aad1` (`04716b6`)
-- Tested URL: <https://rhythm-reader.sociobot.in>, 27 August 2026
-- Fresh detached-clone checks: `npm ci` passed with 0 audit vulnerabilities; `npm test` passed 7/7; exact `npm run build` passed (`tsc -b` plus Vite) and produced `dist/`.
-- Core tap flow, desktop/390 px layout, keyboard Space/N and visible focus, reduced motion, malformed local-storage recovery, invalid-license recovery, microphone-unavailable recovery, privacy/security headers, and live artifact parity were independently checked. Axe had zero serious/critical findings; ordinary candidate/live browser flows had no console or page errors.
-- Live Lighthouse mobile: Performance 90, Accessibility 100, LCP 2.864 s, CLS 0, TBT 253 ms. Production initial JS is 9.27 KB gzip.
-
-### Release blockers
-
-1. **High: offline reload is broken.** After service-worker activation, an offline reload yields an empty `#app`/no `h1` and module MIME errors. Cache `rhythm-reader-v1` lacks the generated JS and CSS, then serves the cached HTML document for the missing module request. The identical deployed `sw.js` has the same failure. This violates the claimed offline-practice feature and required PWA offline-reload test.
-2. **Medium: service-worker updates are not safely versioned.** The hard-coded `rhythm-reader-v1` cache and cache-first root can retain an old root across a deploy whose `sw.js` bytes are unchanged; hashed build assets are not precached.
-3. **Medium: live mobile LCP misses the <2.5 s budget** (measured 2.864 s).
-4. **Medium: 390 px touch targets miss the 44 px minimum**, including 42 px skip link, 40 px home link, and 17 px-high footer links.
-
-Full commands, browser evidence, headers, live SHA-256 parity, and repro steps are in [`.factory/verification.md`](verification.md). Required remediation: versioned `waitUntil`-backed precache of the built HTML/hashed assets; prove fresh-install offline reload and old-to-new SW update; enlarge touch targets; rerun mobile performance and verification.
-
----
-
-# Previous builder handoff (superseded)
-
-## Shipped
-
-- A responsive cassette-era zine interface with original generated hero art, custom SVG rhythm notation, keyboard-first controls, and a 390px-specific layout.
-- Original folk, march, pop-backbeat, swing, and 3–2 clave pattern grammars across 4/4, 3/4, and 6/8, two to four bars, five difficulty levels, and a lock-level option.
-- A complete take loop: audible one-bar count-in, Space/screen taps or live microphone onset detection, per-note early/on-time/late/missed markers, score, mean timing edge, extra-tap count, retry/stay/harder controls.
-- Six-click device latency calibration saved locally and applied to subsequent scoring.
-- Local-first settings and 90-day history storage, with a visible 14-day activity strip and current streak. No analytics, accounts, or uploaded audio.
-- $9 one-time Style Pack using the Sociobot checkout/verify contract, daily verdict cache, returned-license capture, optimistic offline unlock, invalid-license fallback, and paste-to-restore flow. The billing base can be replaced with `VITE_BILLING_BASE`; no product ID or secret is embedded.
-- Offline shell caching, manifest, Azure Static Web Apps routing/security headers, privacy and terms pages, README, and MIT license.
+- Replaced the hand-maintained worker with `scripts/generate-sw.mjs`, which runs after every Vite build. It fingerprints the release (`package.json` version plus built content), writes `dist/sw.js`, and precaches every built HTML page, static shell file, and every hashed Vite JS/CSS file under `waitUntil`.
+- Navigation requests are network-first with a cached document fallback. Asset requests are cache-first and never receive an HTML fallback. The asset lookup intentionally ignores `Vary: Origin`, which Vite uses and which otherwise prevents a precached module from matching the browser's module request.
+- Added an explicit update path: a new worker waits, the app shows **Reload update**, and only that action sends `SKIP_WAITING`; `controllerchange` then reloads into the new release. `/sw.js` is served with `Cache-Control: no-cache` in the Static Web Apps configuration.
+- Added release query metadata to the generated manifest start URL. The trainer, microphone path, local history/calibration, and Sociobot license behavior are unchanged.
+- Raised the former 390 px misses: skip link, home link, footer links, range controls, and the independent checkbox all have at least 44 CSS px hit areas. The segmented radio choices retain their 44 px labelled switch surface.
+- Deferred the below-the-fold mobile collage image so first paint prioritizes the practice headline without changing the product visual system or artwork.
 
 ## Run and verify
 
@@ -39,25 +15,19 @@ Full commands, browser evidence, headers, live SHA-256 parity, and repro steps a
 npm ci
 npm test
 npm run build
+npm run test:browser
 npm run preview
 ```
 
-The production command is exactly `npm run build`; output is `dist/` and contains `dist/index.html`.
+Verification completed on 27 August 2026:
 
-Verification on 27 August 2026:
+- `npm ci`: passed, 0 audit vulnerabilities.
+- `npm test`: passed, 7/7 tests.
+- `npm run build`: passed. It produced `dist/` and a generated release worker (`1.0.1-c37c07a4f01b` on the final verification build) with 9 precached files, including the current two hashed JS/CSS assets.
+- `npm run test:browser`: passed, 3/3 Chromium checks. A fresh profile installed the worker, went offline, reloaded, and rendered the `h1` plus tap pad with no page errors; a failed unknown JS request failed rather than returning the app document. A previously controlled client then found the waiting worker, displayed **Reload update**, explicitly activated it, and transitioned to the new cache. The 390 px shell had no visible sub-44 px independent controls; axe had no serious or critical findings.
+- Local production-preview Lighthouse, 390×844 mobile simulated throttling: Performance **99**, Accessibility **100**, LCP **1,254 ms**, CLS **0**, TBT **111 ms**. Initial JS is 23.98 KB (9.48 KB gzip) and CSS is 16.11 KB (4.66 KB gzip).
+- Live-parity check was run against `https://rhythm-reader.sociobot.in`: it still serves the previous `index-D3KsWn3g.js` and 942-byte legacy service worker, whereas this candidate emits `index-CWrJXYyu.js` and the generated worker. That is expected before deployment and confirms the live site has not been accidentally treated as verified repair output.
 
-- Unit suite: 7/7 passing (scoring alignment/calibration, deterministic rhythm generation, history/streak logic).
-- TypeScript strict build and Vite production build: passing.
-- Production payload: 23.3 KB JavaScript (9.2 KB gzip), 15.7 KB CSS (4.6 KB gzip), 107 KB hero WebP; no runtime font payload.
-- Playwright smoke at 1280×800 and 390×844: title, `lang`, single `main`, single `h1`, loaded image/alt, no console or page errors, and no horizontal viewport overflow.
-- End-to-end mobile keyboard take: count-in → Space taps → scored result completed.
-- axe-core: zero violations on desktop, mobile, calibration dialog, restore-license dialog, privacy page, and terms page.
-- Lighthouse mobile/local production build: Performance 97, Accessibility 100, Best Practices 100, SEO 92; LCP 1.9 s, CLS 0, total blocking time 170 ms.
-- Generated art inspected at source resolution; no people, brands, watermarks, readable text, or malformed objects. Production WebP is 1200×800 and 107 KB.
+## Deployment follow-up
 
-## Known gaps and next steps
-
-- Browser microphone onset detection uses an intentionally conservative fixed transient threshold. Very noisy rooms or soft claps may work better with tap input; a future version could add an adaptive visible input meter.
-- Timing calibration combines output-device delay with the player’s response to six clicks; it is useful compensation, not laboratory latency measurement.
-- The factory still needs to register/switch the production billing product and run its test-card checkout before launch. This repository contains only the documented public checkout/verification client.
-- Lighthouse was measured against the local production preview, not the deployed CDN. Re-run after deployment to capture network-edge numbers.
+The repository is ready to deploy as static `dist/`. After the factory deploys this commit, re-run the live cache-cleared offline reload, old-controlled-client update, and mobile Lighthouse checks against the deployed URL; the currently live pre-repair build cannot satisfy those release assertions until it is replaced.

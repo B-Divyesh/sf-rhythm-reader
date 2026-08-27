@@ -10,7 +10,7 @@ Live product: <https://rhythm-reader.sociobot.in>
 - Audible count-in and screen, Space-key, or microphone/clap input
 - Per-device timing calibration, per-note feedback, overall score, and level controls
 - A 14-day drill calendar stored only in local storage
-- Offline practice via a small service worker
+- Offline practice via a release-versioned precache, with a visible reload control when an update is ready
 - Free folk and march grammars; a one-time Sociobot license unlocks additional styles
 
 This deliberately does not grade pitch, accept MIDI, provide accounts, or transcribe copyrighted songs. Microphone audio is processed in memory and is never recorded or uploaded.
@@ -24,10 +24,13 @@ npm ci
 npm run dev
 npm test
 npm run build
+npm run test:browser
 npm run preview
 ```
 
-The exact production build command is `npm run build`. Static output lands in `dist/`, with `dist/index.html` at its root. `VITE_BILLING_BASE` can override the production billing origin for a registered staging product; the default is `https://api.sociobot.in`.
+The exact production build command is `npm run build`. It runs Vite and then generates `dist/sw.js` from the current release: the worker precaches built HTML plus all Vite-hashed JavaScript/CSS, never substitutes HTML for failed asset requests, and waits for the in-app **Reload update** confirmation before activating an update. Static output lands in `dist/`, with `dist/index.html` at its root. `VITE_BILLING_BASE` can override the production billing origin for a registered staging product; the default is `https://api.sociobot.in`.
+
+`npm run test:browser` rebuilds first, then verifies the cache-cleared offline reload, explicit service-worker update activation, 390 px touch targets, semantic shell, and axe serious/critical findings in Chromium.
 
 ## Deployment
 

@@ -29,6 +29,9 @@ let historyRecords = readHistory();
 let calibrationExpected: number[] = [];
 let calibrationSamples: number[] = [];
 let calibrationRunning = false;
+let updateAvailable = false;
+let updateRegistration: ServiceWorkerRegistration | null = null;
+let reloadForUpdate = false;
 
 function getAudio(): AudioContext {
   audioContext ??= new AudioContext();
@@ -121,11 +124,12 @@ function render(): void {
     <main id="main">
       <section class="hero" aria-labelledby="page-title">
         <div class="hero-copy"><p class="kicker">Sight-read the rhythm. Hear the truth.</p><h1 id="page-title">Don’t guess<br><em>the groove.</em></h1><p class="lede">Read a short, real-feeling pattern. Tap it back. See exactly where every note landed—early, late, or missed.</p><a class="button button--ink" href="#trainer">Start a take <span aria-hidden="true">↓</span></a><p class="local-note">No account. Your practice log stays on this device.</p></div>
-        <picture class="hero-art"><source srcset="/art/rhythm-cassette.webp" type="image/webp"><img src="/art/rhythm-cassette.webp" width="1200" height="800" alt="Cassette, rhythm blocks and marked-up music scraps arranged as a rehearsal zine collage" fetchpriority="high" decoding="async"></picture>
+        <picture class="hero-art"><source srcset="/art/rhythm-cassette.webp" type="image/webp"><img src="/art/rhythm-cassette.webp" width="1200" height="800" alt="Cassette, rhythm blocks and marked-up music scraps arranged as a rehearsal zine collage" loading="lazy" decoding="async"></picture>
         <div class="tape-label" aria-hidden="true"><b>SIDE A</b><span>READ → TAP → KNOW</span></div>
       </section>
 
       <div id="connection" class="connection" role="status" ${navigator.onLine ? 'hidden' : ''}>Offline — practice still works. License checks will resume when you reconnect.</div>
+      <div id="app-update" class="connection connection--update" role="status" ${updateAvailable ? '' : 'hidden'}>A new Rhythm Reader is ready. <button data-action="activate-update">Reload update</button></div>
       <section class="workbench" id="trainer" aria-label="Rhythm trainer">
         <div class="score-column">
           <div class="score-heading"><div><p class="eyebrow">Pattern <span>${pattern.id.slice(0, 4)}</span></p><h2>${STYLE_LABELS[pattern.style]} / level ${pattern.difficulty}</h2></div><button class="shuffle" data-action="new-pattern" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}>New pattern <span aria-hidden="true">↻</span></button></div>
@@ -313,6 +317,13 @@ app.addEventListener('click', (event) => {
   if (action === 'open-unlock') document.querySelector('#unlock')?.scrollIntoView({ behavior: 'smooth' });
   if (action === 'restore') openDialog('#license-dialog');
   if (action === 'close-dialog') (button.closest('dialog') as HTMLDialogElement | null)?.close();
+  if (action === 'activate-update') {
+    const waiting = updateRegistration?.waiting;
+    if (waiting) {
+      reloadForUpdate = true;
+      waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+  }
 });
 
 app.addEventListener('change', (event) => {
@@ -362,4 +373,24 @@ void verifyLicense().then((valid) => {
   render();
 });
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js'); });
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').then((registration) => {
+      updateRegistration = registration;
+      const showUpdate = (worker: ServiceWorker | null) => {
+        if (worker?.state === 'installed' && navigator.serviceWorker.controller) {
+          updateAvailable = true;
+          render();
+        }
+      };
+      showUpdate(registration.waiting);
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        installing?.addEventListener('statechange', () => showUpdate(installing));
+      });
+    });
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadForUpdate) window.location.reload();
+  });
+}
