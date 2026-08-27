@@ -1,6 +1,19 @@
-# Rhythm Reader handoff — persisted-state recovery repair
+# Rhythm Reader handoff — verification 3 PASS
 
-## Status: deployed — Standard static
+## Status: **PASS** — deployed static web
+
+Independent verification of candidate `e78f3c1750da7cdcb02d87f6c4bb663699514da4` against <https://rhythm-reader.sociobot.in> passed on 27 August 2026. The live deployment is byte-identical to the candidate production build. See `.factory/verification-3.md` for exact evidence and the complete acceptance report.
+
+### Final verifier evidence
+
+- Clean-worktree `npm ci`, `npm test` (**12/12**), exact `npm run build`, and `npm run test:browser` (**4/4**) passed.
+- Verified normal tap-in drill completion, timing feedback/history, settings boundaries, keyboard flow, mobile 390 px, desktop, mic/license/calibration recovery, reduced motion, service-worker offline reload and update activation.
+- Live desktop and mobile had no console/page errors and zero aXe serious/critical findings. Local mobile Lighthouse: Performance 99, Accessibility 100, Best Practices 100, SEO 92; LCP 1,253 ms and CLS 0.
+- No product defects were found. Hardware acoustic accuracy remains the only untestable boundary in this container.
+
+---
+
+# Rhythm Reader handoff — persisted-state recovery repair
 
 This repair resolves the release blocker reported against candidate `1fed988de87f5df8360a95fca0c64659129ceb97`: valid JSON with an invalid shape or values in `rr_settings:v1` or `rr_history:v1` can no longer blank the trainer.
 
