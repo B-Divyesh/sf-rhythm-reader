@@ -1,14 +1,40 @@
-# Rhythm Reader: tap-in rhythm sight-reading trainer with real-music patterns and honest feedback
+# Rhythm Reader
 
-Live: https://rhythm-reader.sociobot.in — built by the Param Factory (`static-web`).
+Rhythm Reader is a local-first tap-in sight-reading trainer for adult amateur pianists, guitarists, and drummers. It generates short exercises from original folk, march, pop, swing, and clave pattern grammars, then marks each performed onset as early, on time, late, or missed.
 
-See `.factory/brief.json` for the researched problem this solves and `.factory/design.md` for the visual system.
+Live product: <https://rhythm-reader.sociobot.in>
 
-## Develop
+## What it includes
 
-```
-npm install
+- Custom SVG rhythm notation for 4/4, 3/4, and 6/8 exercises from two to four bars
+- Audible count-in and screen, Space-key, or microphone/clap input
+- Per-device timing calibration, per-note feedback, overall score, and level controls
+- A 14-day drill calendar stored only in local storage
+- Offline practice via a small service worker
+- Free folk and march grammars; a one-time Sociobot license unlocks additional styles
+
+This deliberately does not grade pitch, accept MIDI, provide accounts, or transcribe copyrighted songs. Microphone audio is processed in memory and is never recorded or uploaded.
+
+## Run and verify
+
+Requires Node.js 20 or newer.
+
+```sh
+npm ci
 npm run dev
 npm test
-npm run build   # -> dist/
+npm run build
+npm run preview
 ```
+
+The exact production build command is `npm run build`. Static output lands in `dist/`, with `dist/index.html` at its root. `VITE_BILLING_BASE` can override the production billing origin for a registered staging product; the default is `https://api.sociobot.in`.
+
+## Deployment
+
+Deploy `dist/` as an Azure Static Web App. `public/staticwebapp.config.json` supplies fallback routing, security headers, and immutable-friendly hashed asset behavior. The factory owns DNS and billing-product registration.
+
+The researched scope is in [`.factory/brief.json`](.factory/brief.json), the cassette-zine visual system and artwork provenance in [`.factory/design.md`](.factory/design.md), and build verification in [`.factory/handoff.md`](.factory/handoff.md).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

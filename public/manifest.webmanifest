@@ -1,0 +1,10 @@
+{
+  "name": "Rhythm Reader",
+  "short_name": "Rhythm Reader",
+  "description": "Honest tap-in rhythm sight-reading practice.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3e9d0",
+  "theme_color": "#f3e9d0",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
