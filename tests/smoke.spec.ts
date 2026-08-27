@@ -29,3 +29,42 @@ test('mobile shell is accessible and every visible interactive target is at leas
   const axe = await new AxeBuilder({ page }).analyze();
   expect(axe.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
+
+test('parseable malformed saved settings and history recover without blanking the trainer', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('storage-recovery-seeded')) return;
+    sessionStorage.setItem('storage-recovery-seeded', 'yes');
+    localStorage.setItem('rr_settings:v1', JSON.stringify({
+      meter: '999', style: 'not-a-style', bars: '∞', tempo: 'fast', difficulty: 99,
+      lockLevel: 'maybe', inputMode: 'unknown', calibrationMs: 'NaN',
+    }));
+    localStorage.setItem('rr_history:v1', '{}');
+  });
+
+  await page.goto('/');
+  await expect(page.locator('h1')).toBeVisible();
+  await expect(page.locator('#tempo')).toHaveValue('84');
+  await expect(page.locator('#storage-recovery')).toContainText(/repaired/i);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('rr_settings:v1'))).toBe(JSON.stringify({
+    meter: '4/4', style: 'folk', bars: 2, tempo: 84, difficulty: 2,
+    lockLevel: true, inputMode: 'tap', calibrationMs: 0,
+  }));
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('rr_history:v1'))).toBe('[]');
+
+  await page.evaluate(() => localStorage.setItem('rr_history:v1', JSON.stringify([
+    null,
+    { date: new Date().toISOString().slice(0, 10), drills: 2, best: 91 },
+    { date: '2026-02-30', drills: 1, best: 100 },
+  ])));
+  await page.reload();
+  await expect(page.locator('h1')).toBeVisible();
+  await expect(page.locator('.tap-pad')).toBeVisible();
+  await expect(page.locator('#storage-recovery')).toContainText(/repaired/i);
+  const today = await page.evaluate(() => new Date().toISOString().slice(0, 10));
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rr_history:v1') ?? 'null'))).toEqual([
+    { date: today, drills: 2, best: 91 },
+  ]);
+  expect(errors).toEqual([]);
+});

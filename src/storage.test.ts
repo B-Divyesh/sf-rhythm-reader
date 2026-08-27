@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { recordDrill, streakDays } from './storage';
+import { defaultSettings, readHistory, readSettings, recordDrill, streakDays, takeStorageRecoveryNotice } from './storage';
 
 const memory = new Map<string, string>();
 Object.defineProperty(globalThis, 'localStorage', { value: { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => memory.set(key, value), removeItem: (key: string) => memory.delete(key) } });
 
 describe('practice history', () => {
-  beforeEach(() => memory.clear());
+  beforeEach(() => { memory.clear(); takeStorageRecoveryNotice(); });
   it('groups drills by UTC day and keeps the best score', () => {
     recordDrill(70, new Date('2026-08-27T10:00:00Z'));
     const history = recordDrill(92, new Date('2026-08-27T18:00:00Z'));
@@ -13,5 +13,51 @@ describe('practice history', () => {
   });
   it('counts an unbroken streak ending today', () => {
     expect(streakDays([{ date: '2026-08-25', drills: 1, best: 80 }, { date: '2026-08-26', drills: 1, best: 80 }, { date: '2026-08-27', drills: 1, best: 80 }], new Date('2026-08-27T12:00:00Z'))).toBe(3);
+  });
+
+  it('normalizes parseable invalid settings to the safe defaults', () => {
+    memory.set('rr_settings:v1', JSON.stringify({
+      meter: '999', style: 'not-a-style', bars: '∞', tempo: 'fast', difficulty: 99,
+      lockLevel: 'maybe', inputMode: 'unknown', calibrationMs: 'NaN',
+    }));
+
+    expect(readSettings()).toEqual(defaultSettings);
+    expect(JSON.parse(memory.get('rr_settings:v1') ?? '')).toEqual(defaultSettings);
+    expect(takeStorageRecoveryNotice()).toMatch(/repaired/i);
+  });
+
+  it('retains every valid persisted setting, including a numeric bar choice', () => {
+    const saved = { meter: '6/8', style: 'march', bars: 4, tempo: 160, difficulty: 5, lockLevel: false, inputMode: 'mic', calibrationMs: -120 } as const;
+    memory.set('rr_settings:v1', JSON.stringify(saved));
+    expect(readSettings()).toEqual(saved);
+    expect(takeStorageRecoveryNotice()).toBe('');
+  });
+
+  it('repairs null settings and rejects non-step, out-of-range numeric values', () => {
+    memory.set('rr_settings:v1', 'null');
+    expect(readSettings()).toEqual(defaultSettings);
+
+    memory.set('rr_settings:v1', JSON.stringify({ ...defaultSettings, tempo: 85, difficulty: 0, calibrationMs: 251 }));
+    expect(readSettings()).toEqual(defaultSettings);
+  });
+
+  it('filters malformed history entries and rewrites a normalized safe history', () => {
+    memory.set('rr_history:v1', JSON.stringify([
+      null,
+      { date: '2026-08-27', drills: 2, best: 92 },
+      { date: '2026-02-30', drills: 1, best: 80 },
+      { date: '2026-08-27', drills: 1, best: 95 },
+      { date: '2026-08-26', drills: -1, best: 80 },
+    ]));
+
+    expect(readHistory()).toEqual([{ date: '2026-08-27', drills: 3, best: 95 }]);
+    expect(JSON.parse(memory.get('rr_history:v1') ?? '')).toEqual([{ date: '2026-08-27', drills: 3, best: 95 }]);
+    expect(takeStorageRecoveryNotice()).toMatch(/repaired/i);
+  });
+
+  it('recovers from a non-array history object without exposing it to the trainer', () => {
+    memory.set('rr_history:v1', '{}');
+    expect(readHistory()).toEqual([]);
+    expect(memory.get('rr_history:v1')).toBe('[]');
   });
 });

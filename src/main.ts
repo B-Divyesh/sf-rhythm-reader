@@ -2,7 +2,7 @@ import './style.css';
 import { beatLabel, FREE_STYLES, generatePattern, spokenCount, STYLE_LABELS } from './rhythm';
 import { scoreTaps } from './scoring';
 import { captureReturnedLicense, checkoutUrl, hasOptimisticUnlock, storeLicense, verifyLicense } from './license';
-import { readHistory, readSettings, recordDrill, saveSettings, streakDays, type DayRecord } from './storage';
+import { readHistory, readSettings, recordDrill, saveSettings, streakDays, takeStorageRecoveryNotice, type DayRecord } from './storage';
 import type { Meter, Pattern, ScoreResult, Settings, Style } from './types';
 
 type Phase = 'idle' | 'counting' | 'playing' | 'result';
@@ -26,6 +26,7 @@ let micLastOnset = 0;
 let isUnlocked = hasOptimisticUnlock();
 let licenseNotice = '';
 let historyRecords = readHistory();
+const storageRecoveryNotice = takeStorageRecoveryNotice();
 let calibrationExpected: number[] = [];
 let calibrationSamples: number[] = [];
 let calibrationRunning = false;
@@ -129,6 +130,7 @@ function render(): void {
       </section>
 
       <div id="connection" class="connection" role="status" ${navigator.onLine ? 'hidden' : ''}>Offline — practice still works. License checks will resume when you reconnect.</div>
+      <div id="storage-recovery" class="connection connection--recovery" role="status" ${storageRecoveryNotice ? '' : 'hidden'}>${storageRecoveryNotice}</div>
       <div id="app-update" class="connection connection--update" role="status" ${updateAvailable ? '' : 'hidden'}>A new Rhythm Reader is ready. <button data-action="activate-update">Reload update</button></div>
       <section class="workbench" id="trainer" aria-label="Rhythm trainer">
         <div class="score-column">

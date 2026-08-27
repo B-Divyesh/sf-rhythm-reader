@@ -1,23 +1,20 @@
-# Rhythm Reader handoff — independent verification
+# Rhythm Reader handoff — persisted-state recovery repair
 
-## Status: FAIL
+## Status: ready for Standard static deployment
 
-Candidate `1fed988de87f5df8360a95fca0c64659129ceb97` was independently verified from a clean detached worktree on 27 August 2026. <https://rhythm-reader.sociobot.in> matches its generated artifacts exactly, but the release **must not be accepted** because malformed yet parseable localStorage can blank the app.
+This repair resolves the release blocker reported against candidate `1fed988de87f5df8360a95fca0c64659129ceb97`: valid JSON with an invalid shape or values in `rr_settings:v1` or `rr_history:v1` can no longer blank the trainer.
 
-## What was verified
+## What changed
 
-- `npm ci` completed with zero production audit vulnerabilities; `npm test` passed 7/7; exact `npm run build` passed (`tsc -b`, Vite, generated service worker); `npm run test:browser` passed 3/3 after installing the test browser.
-- Normal 4/4 March practice, timing feedback and results, 6/8 / 4-bar / 160 BPM boundary settings, keyboard Space input, mobile 390 px, reduced motion, mic-denial recovery, invalid-license recovery, privacy/terms, accessibility, offline reload, and service-worker update behavior were exercised.
-- Local Lighthouse mobile: performance 97, accessibility 100, best practices 100, SEO 92; LCP 1,302 ms, CLS 0, TBT 204 ms. Built JS is 23,978 B (9,480 B gzip) and CSS 16,107 B (4,660 B gzip).
-- Live hashes match candidate `dist/` for HTML, JS, CSS, art, manifest, worker, legal pages, and favicon. Live security headers and caching are present; the new service worker precaches assets and passed offline reload.
+- Added runtime normalization at the localStorage boundary. Settings now require the supported meter, style, and input-mode enums; 2–4 bars; even 50–160 BPM; difficulty 1–5; a boolean level lock; and an integer calibration offset from -250 to 250 ms.
+- History now requires an array of real UTC `YYYY-MM-DD` day records with bounded integer drill counts and 0–100 scores. Invalid items, including `null`, are removed; duplicate days are merged; records are sorted and retained for the latest 90 days.
+- Repaired JSON is written back when storage is available. Parse failures, `null`, `{}`, malformed arrays, and unavailable storage all fall back safely without throwing.
+- A non-blocking status strip explains that saved practice data was repaired, while the default trainer renders normally.
+- Added exact regressions for the reported invalid-enum/range settings object, `null` settings, `{}` history, `null`/invalid history items, duplicate-day normalization, and a browser reload with malformed settings and history.
 
-## Blocking defect
+## Verification
 
-`rr_settings:v1` with valid JSON but invalid enum/range values causes `Cannot read properties of undefined (reading 'length')`, leaving a blank `#app` and no h1. `rr_history:v1` containing `{}` or `[null]` similarly crashes the page. This was reproduced locally and live.
-
-The storage reader catches syntax errors only; it needs structural validation and a default/reset path. Add automated coverage for those cases, deploy the repair, then repeat the local and live verification.
-
-## How to verify after the repair
+Run from the repository root:
 
 ```sh
 npm ci
@@ -27,6 +24,18 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-In a clean browser profile, set invalid-but-parseable `rr_settings:v1` and `rr_history:v1`, reload, and confirm the default trainer renders with no page errors. Repeat that check on the deployed URL, then check service-worker offline reload and update activation.
+Completed locally on 27 August 2026:
 
-See `.factory/verification-2.md` for commands, exact evidence, the candidate/deployment comparison, and the complete defect report.
+- `npm test` — **12/12 passed**.
+- `npm run build` — passed (`tsc -b`, Vite, and versioned service-worker generation). Production initial JS is **25.92 kB** (10.21 kB gzip) and CSS is **16.15 kB** (4.68 kB gzip).
+- `npm run test:browser` — **4/4 passed**: 390 px shell/touch targets and aXe serious/critical scan, malformed parseable storage recovery with no page errors, fresh controlled-client offline reload, and explicit service-worker update activation.
+- `verify-url.sh` against the built local preview — HTTP 200, no console/page errors, title/lang/one h1/main/alt checks passed at desktop and 390 px.
+- Mobile Lighthouse — Performance **98**, Accessibility **100**, Best Practices **100**, SEO **92**; LCP **1,275 ms**, CLS **0**.
+
+## Deployment and live verification
+
+Deploy the built `dist/` directory as the `rhythm-reader` **Standard** Azure Static Web App. Then run the same malformed-localStorage reload regression on `https://rhythm-reader.sociobot.in`, along with the offline reload and update activation tests. This section is updated with the resulting release URL and evidence after deployment.
+
+## Known gaps
+
+Physical clap onset accuracy and per-device calibration remain hardware-dependent and cannot be acoustically measured in this container. Permission-denial fallback remains covered by the existing product behavior.

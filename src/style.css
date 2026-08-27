@@ -61,6 +61,7 @@ h1 em::after { content: ""; position: absolute; z-index: -1; left: -2%; right: -
 .tape-label { position: absolute; right: 5%; bottom: 8%; display: flex; flex-direction: column; gap: 3px; padding: 10px 14px; background: var(--acid); border: var(--edge); box-shadow: 4px 4px var(--ink); transform: rotate(2deg); font: .8rem/1.1 "Courier New", monospace; }
 .tape-label b { font-family: Arial, sans-serif; }
 .connection { min-height: 44px; padding: 10px 24px; background: var(--blue); color: white; text-align: center; font-weight: 800; }
+.connection--recovery { background: #754000; }
 .connection--update { background: var(--deck); }.connection--update button { min-height: 44px; margin: -10px 0 -10px 10px; padding: 8px 12px; border: 0; background: var(--acid); color: var(--ink); cursor: pointer; font-weight: 900; }
 
 .workbench { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: clamp(24px, 4vw, 64px); padding: clamp(40px, 6vw, 84px) clamp(20px, 6vw, 96px); max-width: 1500px; margin: auto; }
