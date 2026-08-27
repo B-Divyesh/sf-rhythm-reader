@@ -1,6 +1,30 @@
 {
   "communities": {
     "0": [
+      "src_main_newpattern",
+      "src_rhythm",
+      "src_rhythm_beatsperbar",
+      "src_rhythm_free_styles",
+      "src_rhythm_generatepattern",
+      "src_rhythm_hash",
+      "src_rhythm_rng",
+      "src_rhythm_simplegestures",
+      "src_rhythm_style_labels",
+      "src_rhythm_test",
+      "src_scoring",
+      "src_scoring_scoretaps",
+      "src_scoring_test",
+      "src_types",
+      "src_types_inputmode",
+      "src_types_meter",
+      "src_types_noteresult",
+      "src_types_pattern",
+      "src_types_rhythmnote",
+      "src_types_scoreresult",
+      "src_types_style",
+      "src_types_timingkind"
+    ],
+    "1": [
       "ref_dom",
       "ref_dom_iterable",
       "ref_es2022",
@@ -21,25 +45,6 @@
       "tsconfig_compileroptions_target",
       "tsconfig_compileroptions_usedefineforclassfields",
       "tsconfig_include"
-    ],
-    "1": [
-      "src_main_newpattern",
-      "src_rhythm",
-      "src_rhythm_beatsperbar",
-      "src_rhythm_free_styles",
-      "src_rhythm_generatepattern",
-      "src_rhythm_hash",
-      "src_rhythm_rng",
-      "src_rhythm_simplegestures",
-      "src_rhythm_style_labels",
-      "src_rhythm_test",
-      "src_types",
-      "src_types_inputmode",
-      "src_types_meter",
-      "src_types_pattern",
-      "src_types_rhythmnote",
-      "src_types_style",
-      "src_types_timingkind"
     ],
     "2": [
       "src_license",
@@ -83,10 +88,24 @@
       "package_scripts_dev",
       "package_scripts_preview",
       "package_scripts_test",
+      "package_scripts_test_browser",
       "package_type",
       "package_version"
     ],
     "5": [
+      "scripts_generate_sw",
+      "scripts_generate_sw_dist",
+      "scripts_generate_sw_filesin",
+      "scripts_generate_sw_fingerprint",
+      "scripts_generate_sw_hashedassets",
+      "scripts_generate_sw_manifest",
+      "scripts_generate_sw_manifestpath",
+      "scripts_generate_sw_packageinfo",
+      "scripts_generate_sw_precache",
+      "scripts_generate_sw_precachefiles",
+      "scripts_generate_sw_root"
+    ],
+    "6": [
       "src_storage",
       "src_storage_dayrecord",
       "src_storage_defaultsettings",
@@ -98,7 +117,7 @@
       "src_storage_test_memory",
       "src_types_settings"
     ],
-    "6": [
+    "7": [
       "src_license_checkouturl",
       "src_main_calendar",
       "src_main_render",
@@ -106,20 +125,13 @@
       "src_rhythm_beatlabel",
       "src_rhythm_spokencount"
     ],
-    "7": [
+    "8": [
       "src_main_announce",
       "src_main_begintake",
       "src_main_clicksound",
       "src_main_getaudio",
       "src_main_registertap",
       "src_main_startmicrophone"
-    ],
-    "8": [
-      "src_scoring",
-      "src_scoring_scoretaps",
-      "src_scoring_test",
-      "src_types_noteresult",
-      "src_types_scoreresult"
     ],
     "9": [
       "src_main_calibrationtap",
@@ -134,27 +146,36 @@
       "src_storage_savesettings"
     ],
     "11": [
-      "public_sw",
-      "public_sw_shell"
+      "test",
+      "tests_pwa_spec",
+      "tests_pwa_spec_waitforcontrol"
     ],
     "12": [
+      "playwright_config"
+    ],
+    "13": [
       "src_vite_env_d"
+    ],
+    "14": [
+      "tests_smoke_spec"
     ]
   },
   "cohesion": {
-    "0": 0.1,
-    "1": 0.17647058823529413,
+    "0": 0.13852813852813853,
+    "1": 0.1,
     "2": 0.15833333333333333,
     "3": 0.15384615384615385,
-    "4": 0.2,
-    "5": 0.26666666666666666,
-    "6": 0.4,
-    "7": 0.4666666666666667,
-    "8": 0.5,
+    "4": 0.18181818181818182,
+    "5": 0.18181818181818182,
+    "6": 0.26666666666666666,
+    "7": 0.4,
+    "8": 0.4666666666666667,
     "9": 0.6666666666666666,
     "10": 0.5,
-    "11": 1.0,
-    "12": 1.0
+    "11": 0.6666666666666666,
+    "12": 1.0,
+    "13": 1.0,
+    "14": 1.0
   },
   "gods": [
     {
@@ -193,6 +214,11 @@
       "degree": 6
     },
     {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 6
+    },
+    {
       "id": "src_storage_recorddrill",
       "label": "recordDrill()",
       "degree": 5
@@ -200,11 +226,6 @@
     {
       "id": "src_main_getaudio",
       "label": "getAudio()",
-      "degree": 5
-    },
-    {
-      "id": "src_main_finishcalibration",
-      "label": "finishCalibration()",
       "degree": 5
     }
   ],
@@ -215,28 +236,6 @@
       "source_files": [
         "src/main.ts",
         "src/rhythm.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities"
-    },
-    {
-      "source": "finishTake()",
-      "target": "scoreTaps()",
-      "source_files": [
-        "src/main.ts",
-        "src/scoring.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "bridges separate communities"
-    },
-    {
-      "source": "finishTake()",
-      "target": "recordDrill()",
-      "source_files": [
-        "src/main.ts",
-        "src/storage.ts"
       ],
       "confidence": "EXTRACTED",
       "relation": "calls",
@@ -256,6 +255,28 @@
     {
       "source": "finishCalibration()",
       "target": "saveSettings()",
+      "source_files": [
+        "src/main.ts",
+        "src/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "finishTake()",
+      "target": "recordDrill()",
+      "source_files": [
+        "src/main.ts",
+        "src/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "render()",
+      "target": "streakDays()",
       "source_files": [
         "src/main.ts",
         "src/storage.ts"
