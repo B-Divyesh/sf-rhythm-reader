@@ -81,7 +81,12 @@ async function cacheFirstAsset(request) {
   // build artifact carries Vary: Origin, so ignore that transport-only variance.
   const cached = await caches.match(request, { ignoreVary: true });
   if (cached) return cached;
-  return fetch(request);
+  const response = await fetch(request);
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/assets/') && (response.headers.get('content-type') || '').includes('text/html')) {
+    return new Response('Asset not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  return response;
 }
 
 self.addEventListener('fetch', (event) => {

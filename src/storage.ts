@@ -1,7 +1,8 @@
 import type { Settings } from './types';
 
-const SETTINGS_KEY = 'rr_settings:v1';
-const HISTORY_KEY = 'rr_history:v1';
+const REAL_SETTINGS_KEY = 'rr_settings:v1';
+const REAL_HISTORY_KEY = 'rr_history:v1';
+const DEMO_PREFIX = 'demo:';
 const METERS = ['4/4', '3/4', '6/8'] as const;
 const STYLES = ['folk', 'march', 'pop', 'swing', 'clave'] as const;
 const INPUT_MODES = ['tap', 'mic'] as const;
@@ -9,6 +10,35 @@ const MAX_HISTORY_DAYS = 90;
 const MAX_DRILLS_PER_DAY = 1_000_000;
 
 let repairedPersistedState = false;
+let demoMode = false;
+
+function settingsKey(): string { return `${demoMode ? DEMO_PREFIX : ''}${REAL_SETTINGS_KEY}`; }
+function historyKey(): string { return `${demoMode ? DEMO_PREFIX : ''}${REAL_HISTORY_KEY}`; }
+
+/** Selects an isolated storage namespace before any settings or history are read. */
+export function configureStorage(useDemoNamespace: boolean): void {
+  demoMode = useDemoNamespace;
+  repairedPersistedState = false;
+}
+
+export function resetDemoStorage(): void {
+  localStorage.removeItem(`${DEMO_PREFIX}${REAL_SETTINGS_KEY}`);
+  localStorage.removeItem(`${DEMO_PREFIX}${REAL_HISTORY_KEY}`);
+}
+
+export function seedDemoStorage(now = new Date()): void {
+  if (!demoMode) return;
+  if (localStorage.getItem(settingsKey()) === null) {
+    writeJson(settingsKey(), { ...defaultSettings, style: 'pop', tempo: 88, difficulty: 2 });
+  }
+  if (localStorage.getItem(historyKey()) === null) {
+    const days = [4, 2, 1].map((back, index) => {
+      const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - back));
+      return { date: date.toISOString().slice(0, 10), drills: index + 1, best: [72, 84, 91][index] };
+    });
+    writeJson(historyKey(), days);
+  }
+}
 
 export interface DayRecord { date: string; drills: number; best: number }
 
@@ -58,11 +88,12 @@ function markRepaired(): void {
 export function takeStorageRecoveryNotice(): string {
   if (!repairedPersistedState) return '';
   repairedPersistedState = false;
-  return 'Saved practice settings or history were repaired. Your trainer is ready to use.';
+  return 'Damaged practice data was reset. You can start a new rhythm.';
 }
 
 export function readSettings(): Settings {
-  const stored = readJson(SETTINGS_KEY);
+  const key = settingsKey();
+  const stored = readJson(key);
   if (!stored.found) return { ...defaultSettings };
 
   const source = isPlainObject(stored.value) ? stored.value : {};
@@ -79,17 +110,18 @@ export function readSettings(): Settings {
 
   if (!stored.validJson || !sameJson(stored.value, normalized)) {
     markRepaired();
-    writeJson(SETTINGS_KEY, normalized);
+    writeJson(key, normalized);
   }
   return normalized;
 }
 
 export function saveSettings(settings: Settings): void {
-  writeJson(SETTINGS_KEY, settings);
+  writeJson(settingsKey(), settings);
 }
 
 export function readHistory(): DayRecord[] {
-  const stored = readJson(HISTORY_KEY);
+  const key = historyKey();
+  const stored = readJson(key);
   if (!stored.found) return [];
   const records = Array.isArray(stored.value) ? stored.value : [];
   const byDate = new Map<string, DayRecord>();
@@ -106,7 +138,7 @@ export function readHistory(): DayRecord[] {
   const normalized = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX_HISTORY_DAYS);
   if (!stored.validJson || !sameJson(stored.value, normalized)) {
     markRepaired();
-    writeJson(HISTORY_KEY, normalized);
+    writeJson(key, normalized);
   }
   return normalized;
 }
@@ -124,7 +156,7 @@ export function recordDrill(score: number, now = new Date()): DayRecord[] {
   if (existing) { existing.drills += 1; existing.best = Math.max(existing.best, score); }
   else history.push({ date, drills: 1, best: score });
   const trimmed = history.sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX_HISTORY_DAYS);
-  writeJson(HISTORY_KEY, trimmed);
+  writeJson(historyKey(), trimmed);
   return trimmed;
 }
 

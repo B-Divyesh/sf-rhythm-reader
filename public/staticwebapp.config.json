@@ -1,12 +1,12 @@
 {
-  "navigationFallback": { "rewrite": "/index.html", "exclude": ["/art/*", "*.css", "*.js", "*.svg", "*.webmanifest"] },
+  "navigationFallback": { "rewrite": "/index.html", "exclude": ["/art/*", "/*.{css,js,png,jpg,svg,webp,webmanifest,txt,xml,json}"] },
   "routes": [
     { "route": "/sw.js", "headers": { "Cache-Control": "no-cache" } },
     { "route": "/assets/*", "headers": { "Cache-Control": "public, max-age=31536000, immutable" } },
     { "route": "/art/*", "headers": { "Cache-Control": "public, max-age=604800" } }
   ],
   "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self' https://api.sociobot.in https://pilot-api.sociobot.in; media-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff",
     "Permissions-Policy": "camera=(), geolocation=(), microphone=(self)"

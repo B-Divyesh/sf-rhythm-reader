@@ -1,7 +1,7 @@
 {
   "name": "Rhythm Reader",
   "short_name": "Rhythm Reader",
-  "description": "Honest tap-in rhythm sight-reading practice.",
+  "description": "Practice reading rhythms by tapping them.",
   "start_url": "/?v=build",
   "display": "standalone",
   "background_color": "#f3e9d0",

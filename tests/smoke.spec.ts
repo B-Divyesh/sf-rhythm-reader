@@ -46,7 +46,7 @@ test('parseable malformed saved settings and history recover without blanking th
   await page.goto('/');
   await expect(page.locator('h1')).toBeVisible();
   await expect(page.locator('#tempo')).toHaveValue('84');
-  await expect(page.locator('#storage-recovery')).toContainText(/repaired/i);
+  await expect(page.locator('#storage-recovery')).toContainText(/reset/i);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('rr_settings:v1'))).toBe(JSON.stringify({
     meter: '4/4', style: 'folk', bars: 2, tempo: 84, difficulty: 2,
     lockLevel: true, inputMode: 'tap', calibrationMs: 0,
@@ -61,7 +61,7 @@ test('parseable malformed saved settings and history recover without blanking th
   await page.reload();
   await expect(page.locator('h1')).toBeVisible();
   await expect(page.locator('.tap-pad')).toBeVisible();
-  await expect(page.locator('#storage-recovery')).toContainText(/repaired/i);
+  await expect(page.locator('#storage-recovery')).toContainText(/reset/i);
   const today = await page.evaluate(() => new Date().toISOString().slice(0, 10));
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rr_history:v1') ?? 'null'))).toEqual([
     { date: today, drills: 2, best: 91 },

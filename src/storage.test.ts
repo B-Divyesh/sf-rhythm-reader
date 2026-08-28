@@ -23,7 +23,7 @@ describe('practice history', () => {
 
     expect(readSettings()).toEqual(defaultSettings);
     expect(JSON.parse(memory.get('rr_settings:v1') ?? '')).toEqual(defaultSettings);
-    expect(takeStorageRecoveryNotice()).toMatch(/repaired/i);
+    expect(takeStorageRecoveryNotice()).toMatch(/reset/i);
   });
 
   it('retains every valid persisted setting, including a numeric bar choice', () => {
@@ -52,12 +52,27 @@ describe('practice history', () => {
 
     expect(readHistory()).toEqual([{ date: '2026-08-27', drills: 3, best: 95 }]);
     expect(JSON.parse(memory.get('rr_history:v1') ?? '')).toEqual([{ date: '2026-08-27', drills: 3, best: 95 }]);
-    expect(takeStorageRecoveryNotice()).toMatch(/repaired/i);
+    expect(takeStorageRecoveryNotice()).toMatch(/reset/i);
   });
 
   it('recovers from a non-array history object without exposing it to the trainer', () => {
     memory.set('rr_history:v1', '{}');
     expect(readHistory()).toEqual([]);
     expect(memory.get('rr_history:v1')).toBe('[]');
+  });
+
+  it('keeps demo settings and history in demo-prefixed keys', async () => {
+    const { configureStorage, resetDemoStorage, saveSettings, seedDemoStorage } = await import('./storage');
+    memory.set('rr_settings:v1', JSON.stringify({ ...defaultSettings, meter: '3/4' }));
+    configureStorage(true);
+    seedDemoStorage(new Date('2026-08-28T12:00:00Z'));
+    expect(readSettings().style).toBe('pop');
+    saveSettings({ ...defaultSettings, meter: '6/8' });
+    expect(JSON.parse(memory.get('rr_settings:v1') ?? '{}').meter).toBe('3/4');
+    expect(JSON.parse(memory.get('demo:rr_settings:v1') ?? '{}').meter).toBe('6/8');
+    expect(memory.has('demo:rr_history:v1')).toBe(true);
+    resetDemoStorage();
+    expect([...memory.keys()].filter((key) => key.startsWith('demo:'))).toEqual([]);
+    configureStorage(false);
   });
 });

@@ -33,9 +33,9 @@ export function scoreTaps(expectedMs: number[], tapsMs: number[], beatMs: number
   }, 0);
   const raw = expectedMs.length ? timingPoints / expectedMs.length : 0;
   const score = Math.max(0, Math.round((raw * 100) - extraTaps * 3));
-  const message = score >= 92 ? 'Locked in. Clean and steady.'
-    : score >= 78 ? 'Solid take. Check the marked edges.'
-      : score >= 55 ? 'The shape is there. Slow it down once.'
-        : 'Try it again under tempo and count aloud.';
+  const message = score >= 92 ? 'Your taps were steady.'
+    : score >= 78 ? 'Check the marked taps.'
+      : score >= 55 ? 'Try the rhythm once more at a slower speed.'
+        : 'Lower the speed and count aloud.';
   return { score, notes, extraTaps, meanAbsOffset, message };
 }

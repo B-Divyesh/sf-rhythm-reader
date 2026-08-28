@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rhythm-reader.sociobot.in/sitemap.xml

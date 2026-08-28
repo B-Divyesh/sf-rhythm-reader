@@ -1,38 +1,69 @@
 import './style.css';
-import { beatLabel, FREE_STYLES, generatePattern, spokenCount, STYLE_LABELS } from './rhythm';
+import { beatLabel, generatePattern, spokenCount, STYLE_LABELS } from './rhythm';
 import { scoreTaps } from './scoring';
-import { captureReturnedLicense, checkoutUrl, hasOptimisticUnlock, storeLicense, verifyLicense } from './license';
-import { readHistory, readSettings, recordDrill, saveSettings, streakDays, takeStorageRecoveryNotice, type DayRecord } from './storage';
+import {
+  configureStorage, readHistory, readSettings, recordDrill, resetDemoStorage,
+  saveSettings, seedDemoStorage, streakDays, takeStorageRecoveryNotice, type DayRecord,
+} from './storage';
 import type { Meter, Pattern, ScoreResult, Settings, Style } from './types';
 
 type Phase = 'idle' | 'counting' | 'playing' | 'result';
+type Route = 'home' | 'demo' | 'privacy' | 'terms' | 'not-found';
 
 const mount = document.querySelector<HTMLDivElement>('#app');
 if (!mount) throw new Error('App mount not found');
 const app: HTMLDivElement = mount;
 
-captureReturnedLicense();
-let settings: Settings = readSettings();
-let pattern: Pattern = generatePattern(settings.meter, settings.style, settings.bars, settings.difficulty);
-let phase: Phase = 'idle';
-let result: ScoreResult | null = null;
+let route: Route = routeFromLocation();
+let demoMode = route === 'demo';
+let settings: Settings;
+let pattern: Pattern;
+let phase: Phase;
+let result: ScoreResult | null;
 let taps: number[] = [];
-let takeOrigin = 0;
+let practiceOrigin = 0;
 let countBeat = 0;
 let audioContext: AudioContext | null = null;
 let micStream: MediaStream | null = null;
 let micFrame = 0;
-let micLastOnset = 0;
-let isUnlocked = hasOptimisticUnlock();
-let licenseNotice = '';
-let historyRecords = readHistory();
-const storageRecoveryNotice = takeStorageRecoveryNotice();
+let micLastTap = 0;
+let historyRecords: DayRecord[] = [];
+let storageRecoveryNotice = '';
 let calibrationExpected: number[] = [];
 let calibrationSamples: number[] = [];
 let calibrationRunning = false;
 let updateAvailable = false;
 let updateRegistration: ServiceWorkerRegistration | null = null;
 let reloadForUpdate = false;
+
+function routeFromLocation(): Route {
+  const path = window.location.pathname.replace(/\/+$/u, '') || '/';
+  if ((path === '/' && new URLSearchParams(location.search).get('demo') === '1') || path === '/demo') return 'demo';
+  if (path === '/') return 'home';
+  if (path === '/privacy') return 'privacy';
+  if (path === '/terms') return 'terms';
+  return 'not-found';
+}
+
+function sampleResult(activePattern: Pattern): ScoreResult {
+  const beatMs = 60_000 / 88;
+  const expected = activePattern.notes.map((note) => note.beat * beatMs);
+  const sampleTaps = expected.slice(0, -1).map((time, index) => time + [-118, 8, 124, 24][index % 4]);
+  return scoreTaps(expected, sampleTaps, beatMs);
+}
+
+function loadPracticeState(): void {
+  demoMode = route === 'demo';
+  configureStorage(demoMode);
+  if (demoMode) seedDemoStorage();
+  settings = readSettings();
+  historyRecords = readHistory();
+  storageRecoveryNotice = takeStorageRecoveryNotice();
+  pattern = generatePattern(settings.meter, settings.style, settings.bars, settings.difficulty, demoMode ? 'two-bar-demo' : undefined);
+  result = demoMode ? sampleResult(pattern) : null;
+  phase = demoMode ? 'result' : 'idle';
+  taps = [];
+}
 
 function getAudio(): AudioContext {
   audioContext ??= new AudioContext();
@@ -88,8 +119,8 @@ function scoreSvg(activePattern: Pattern, activeResult: ScoreResult | null): str
     }
   });
   const description = activeResult
-    ? activeResult.notes.map((note, index) => `Note ${index + 1}: ${note.kind}${note.offsetMs === undefined ? '' : ` ${Math.round(Math.abs(note.offsetMs))} milliseconds ${note.offsetMs < 0 ? 'early' : 'late'}`}`).join('. ')
-    : `${activePattern.bars} bars in ${activePattern.meter}, ${activePattern.notes.length} notes. Count ${spokenCount(activePattern)}.`;
+    ? activeResult.notes.map((note, index) => `Tap ${index + 1}: ${note.kind}${note.offsetMs === undefined ? '' : ` by ${Math.round(Math.abs(note.offsetMs))} milliseconds`}`).join('. ')
+    : `${activePattern.bars} bars in ${activePattern.meter} with ${activePattern.notes.length} taps. Count ${spokenCount(activePattern)}.`;
   return `<svg class="notation" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="score-title score-desc"><title id="score-title">${STYLE_LABELS[activePattern.style]} rhythm</title><desc id="score-desc">${description}</desc>${content}</svg>`;
 }
 
@@ -102,77 +133,106 @@ function calendar(history: DayRecord[]): string {
     const key = date.toISOString().slice(0, 10);
     const item = byDate.get(key);
     const label = date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
-    days.push(`<li class="practice-day ${item ? 'practice-day--done' : ''}" title="${label}: ${item?.drills ?? 0} drills"><span aria-hidden="true">${date.getUTCDate()}</span><span class="sr-only">${label}, ${item?.drills ?? 0} completed drills</span></li>`);
+    days.push(`<li class="practice-day ${item ? 'practice-day--done' : ''}" title="${label}: ${item?.drills ?? 0} practices"><span aria-hidden="true">${date.getUTCDate()}</span><span class="sr-only">${label}, ${item?.drills ?? 0} completed practices</span></li>`);
   }
   return days.join('');
 }
 
-function render(): void {
+function header(): string {
+  return `<header class="masthead"><a class="wordmark" href="/" data-route aria-label="Rhythm Reader home"><span>RR</span> Rhythm Reader</a><nav aria-label="Main navigation"><a href="/demo" data-route>Demo</a><a href="/#how" data-route>How it works</a><a href="/privacy" data-route>Privacy</a></nav></header>`;
+}
+
+function footer(): string {
+  return `<footer><div class="footer-mark">RR<span>READ<br>TAP<br>CHECK</span></div><div><p>Practice rhythm patterns and check each tap.</p><p><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://github.com/B-Divyesh/sf-rhythm-reader">Source code <span class="sr-only">(external)</span></a></p><small>Collage created for Rhythm Reader with AI assistance. © 2026 Rhythm Reader · build 1.1.0 · Built by Param Factory.</small></div></footer>`;
+}
+
+function demoBanner(): string {
+  if (!demoMode) return '';
+  return `<aside class="demo-banner" aria-label="Demo controls"><strong>Demo — sample data, nothing is saved</strong><span>Changes stay separate from your practice history.</span><div><button data-action="reset-demo">Reset demo</button><a href="/" data-route>Start for real</a></div></aside>`;
+}
+
+function resultPanel(): string {
+  if (!result) return '';
+  return `<section class="result-sheet" aria-labelledby="result-title"><div><p class="eyebrow">${demoMode ? 'Sample result' : 'Practice result'}</p><h2 id="result-title"><span>${result.score}%</span> ${result.message}</h2></div><dl class="practice-stats"><div><dt>Average timing gap</dt><dd>${result.meanAbsOffset} ms</dd></div><div><dt>Extra taps</dt><dd>${result.extraTaps}</dd></div></dl><div class="legend" aria-label="Timing marker key"><span class="early">E early</span><span class="on">ON on time</span><span class="late">L late</span><span class="missed">× missed</span></div><div class="result-actions"><button class="button button--ink" data-action="again">Try this rhythm again</button><button class="button" data-action="stay">Show a new rhythm</button><button class="button" data-action="harder">Raise the difficulty</button></div></section>`;
+}
+
+function workbench(): string {
   const totalToday = historyRecords.find((day) => day.date === new Date().toISOString().slice(0, 10))?.drills ?? 0;
-  const statusText = phase === 'counting' ? `Count in: ${countBeat}` : phase === 'playing' ? 'Your take is recording' : phase === 'result' ? `Take scored ${result?.score ?? 0} percent` : 'Ready for a new take';
-  const resultPanel = result ? `<section class="result-sheet" aria-labelledby="result-title">
-    <div><p class="eyebrow">Take ${totalToday}</p><h2 id="result-title"><span>${result.score}%</span> ${result.message}</h2></div>
-    <dl class="take-stats"><div><dt>Average edge</dt><dd>${result.meanAbsOffset} ms</dd></div><div><dt>Extra taps</dt><dd>${result.extraTaps}</dd></div></dl>
-    <div class="legend" aria-label="Timing marker legend"><span class="early">E early</span><span class="on">ON in time</span><span class="late">L late</span><span class="missed">× missed</span></div>
-    <div class="result-actions"><button class="button button--ink" data-action="again">Again</button><button class="button" data-action="stay">New, same level</button><button class="button" data-action="harder">Make it harder</button></div>
-  </section>` : '';
+  const statusText = phase === 'counting' ? `Count in: ${countBeat}` : phase === 'playing' ? 'Timing your taps' : phase === 'result' ? `Practice scored ${result?.score ?? 0} percent` : 'Ready to start';
+  return `<section class="workbench" id="trainer" aria-label="Rhythm practice"><div class="score-column"><div class="score-heading"><div><p class="eyebrow">Rhythm ${pattern.id.slice(0, 4)}</p><h2>${STYLE_LABELS[pattern.style]} · level ${pattern.difficulty}</h2></div><button class="shuffle" data-action="new-pattern" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}>Show a new rhythm <span aria-hidden="true">↻</span></button></div><div class="score-paper" tabindex="0" aria-label="Rhythm notation. Scroll sideways on a small screen.">${scoreSvg(pattern, result)}</div><p class="count-guide"><b>Count:</b> ${spokenCount(pattern)} <span>· ${settings.tempo} BPM · ${beatLabel(pattern.meter)}</span></p><div class="deck" data-phase="${phase}"><div class="deck-top"><span class="record-light" aria-hidden="true"></span><strong>${statusText}</strong><span class="counter">${String(taps.length).padStart(2, '0')} TAPS</span></div><div class="count-lamps" aria-label="Count in beat ${countBeat || 0}">${Array.from({ length: pattern.beatsPerBar }, (_, i) => `<i class="${phase === 'counting' && i + 1 === countBeat ? 'lit' : ''}">${i + 1}</i>`).join('')}</div><button class="tap-pad" data-action="tap" aria-label="${phase === 'idle' || phase === 'result' ? 'Start rhythm practice' : phase === 'playing' ? 'Tap the rhythm' : 'Wait for the count in'}"><span>${phase === 'playing' ? 'TAP' : phase === 'counting' ? 'COUNT' : 'START PRACTICE'}</span><small>${settings.inputMode === 'tap' ? 'Space key or screen' : 'Clap into your microphone'}</small></button><div class="deck-tools"><button data-action="toggle-input" aria-pressed="${settings.inputMode === 'mic'}"><span aria-hidden="true">${settings.inputMode === 'mic' ? '◉' : '⌨'}</span> ${settings.inputMode === 'mic' ? 'Use microphone claps' : 'Use keyboard or screen taps'}</button><button data-action="open-calibration"><span aria-hidden="true">±</span> Adjust tap timing (${settings.calibrationMs > 0 ? '+' : ''}${settings.calibrationMs} ms)</button></div></div><p class="keyboard-help"><kbd>Space</kbd> starts or taps. <kbd>N</kbd> shows a new rhythm.</p><div id="live-status" class="sr-only" aria-live="polite">${statusText}</div>${resultPanel()}</div><aside class="settings" aria-labelledby="setup-title"><p class="eyebrow">Practice settings</p><h2 id="setup-title">Choose your rhythm</h2><div class="field"><label for="meter">Time signature</label><select id="meter" data-setting="meter" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}><option ${settings.meter === '4/4' ? 'selected' : ''}>4/4</option><option ${settings.meter === '3/4' ? 'selected' : ''}>3/4</option><option ${settings.meter === '6/8' ? 'selected' : ''}>6/8</option></select></div><div class="field"><label for="tempo">Speed <output for="tempo">${settings.tempo} BPM</output></label><input id="tempo" data-setting="tempo" type="range" min="50" max="160" step="2" value="${settings.tempo}" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}></div><fieldset><legend>Length</legend><div class="segmented">${[2, 3, 4].map((bars) => `<label><input type="radio" name="bars" value="${bars}" data-setting="bars" ${settings.bars === bars ? 'checked' : ''} ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}><span>${bars} bars</span></label>`).join('')}</div></fieldset><div class="field"><label for="style">Rhythm style</label><select id="style" data-setting="style" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}>${(Object.keys(STYLE_LABELS) as Style[]).map((style) => `<option value="${style}" ${settings.style === style ? 'selected' : ''}>${STYLE_LABELS[style]}</option>`).join('')}</select></div><div class="level"><div><label for="level">Difficulty</label><span>${settings.difficulty} / 5</span></div><input id="level" data-setting="difficulty" type="range" min="1" max="5" value="${settings.difficulty}"><label class="check"><input type="checkbox" data-setting="lockLevel" ${settings.lockLevel ? 'checked' : ''}><span>Keep this difficulty</span></label></div><p class="settings-note">Choose folk, march, pop, swing, or clave rhythms.</p></aside></section><section class="practice-log" id="practice-history" aria-labelledby="history-title"><div><p class="eyebrow">Past 14 days</p><h2 id="history-title">Practice history <span>${streakDays(historyRecords)} day streak · ${totalToday} today</span></h2></div><ol class="calendar">${calendar(historyRecords)}</ol></section>`;
+}
 
-  app.innerHTML = `
-    <header class="masthead">
-      <a class="wordmark" href="/" aria-label="Rhythm Reader home"><span>RR</span> Rhythm Reader</a>
-      <nav aria-label="Utility"><a href="#how">How it reads</a><a href="#practice-log">Practice log</a><button class="text-button" data-action="open-unlock">${isUnlocked ? 'Style pack active' : 'Unlock styles'}</button></nav>
-    </header>
-    <main id="main">
-      <section class="hero" aria-labelledby="page-title">
-        <div class="hero-copy"><p class="kicker">Sight-read the rhythm. Hear the truth.</p><h1 id="page-title">Don’t guess<br><em>the groove.</em></h1><p class="lede">Read a short, real-feeling pattern. Tap it back. See exactly where every note landed—early, late, or missed.</p><a class="button button--ink" href="#trainer">Start a take <span aria-hidden="true">↓</span></a><p class="local-note">No account. Your practice log stays on this device.</p></div>
-        <picture class="hero-art"><source srcset="/art/rhythm-cassette.webp" type="image/webp"><img src="/art/rhythm-cassette.webp" width="1200" height="800" alt="Cassette, rhythm blocks and marked-up music scraps arranged as a rehearsal zine collage" loading="lazy" decoding="async"></picture>
-        <div class="tape-label" aria-hidden="true"><b>SIDE A</b><span>READ → TAP → KNOW</span></div>
-      </section>
+function homePage(): string {
+  return `<main id="main"><section class="hero" aria-labelledby="page-title"><div class="hero-copy"><p class="kicker">Read · tap · check</p><h1 id="page-title" tabindex="-1">Practice reading rhythms by tapping them</h1><p class="lede">For adult pianists, guitarists, and drummers who want clear timing feedback before rehearsal.</p><div class="hero-action"><a class="button button--ink" href="/demo" data-route>Try it with sample data</a><span>See a scored two-bar rhythm right away.</span></div><ul class="plain-facts"><li>Works offline after your first visit.</li><li>Practice history stays in this browser.</li><li>Free to use. No account.</li></ul></div><picture class="hero-art"><source srcset="/art/rhythm-cassette.webp" type="image/webp"><img src="/art/rhythm-cassette.webp" width="1200" height="800" alt="Cassette, rhythm blocks, and marked rhythm scraps arranged like a rehearsal zine" fetchpriority="high" decoding="async"></picture><div class="tape-label" aria-hidden="true"><b>SIDE A</b><span>READ → TAP → CHECK</span></div></section>${statusBanners()}${workbench()}<section class="how" id="how" aria-labelledby="how-title"><div><p class="eyebrow">How rhythm practice works</p><h2 id="how-title">Check the timing of each tap.</h2></div><ol><li><span>01</span><b>Read the rhythm</b><p>Scan both bars and count one bar silently.</p></li><li><span>02</span><b>Tap or clap</b><p>Use Space, the large button, or microphone claps after the count.</p></li><li><span>03</span><b>Check each tap</b><p>See early, on-time, late, and missed marks with a score.</p></li></ol></section><section class="limits" aria-labelledby="limits-title"><p class="eyebrow">What it does not do</p><h2 id="limits-title">Timing practice, not music grading.</h2><p>Rhythm Reader does not grade pitch, read MIDI, or copy songs. It only compares your tap times with the shown rhythm.</p></section></main>`;
+}
 
-      <div id="connection" class="connection" role="status" ${navigator.onLine ? 'hidden' : ''}>Offline — practice still works. License checks will resume when you reconnect.</div>
-      <div id="storage-recovery" class="connection connection--recovery" role="status" ${storageRecoveryNotice ? '' : 'hidden'}>${storageRecoveryNotice}</div>
-      <div id="app-update" class="connection connection--update" role="status" ${updateAvailable ? '' : 'hidden'}>A new Rhythm Reader is ready. <button data-action="activate-update">Reload update</button></div>
-      <section class="workbench" id="trainer" aria-label="Rhythm trainer">
-        <div class="score-column">
-          <div class="score-heading"><div><p class="eyebrow">Pattern <span>${pattern.id.slice(0, 4)}</span></p><h2>${STYLE_LABELS[pattern.style]} / level ${pattern.difficulty}</h2></div><button class="shuffle" data-action="new-pattern" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}>New pattern <span aria-hidden="true">↻</span></button></div>
-          <div class="score-paper" tabindex="0" aria-label="Rhythm notation; scroll horizontally on a small screen">${scoreSvg(pattern, result)}</div>
-          <p class="count-guide"><b>Count it:</b> ${spokenCount(pattern)} <span>• ${settings.tempo} BPM, ${beatLabel(pattern.meter)}</span></p>
-          <div class="deck" data-phase="${phase}">
-            <div class="deck-top"><span class="record-light" aria-hidden="true"></span><strong>${statusText}</strong><span class="counter">${String(taps.length).padStart(2, '0')} TAPS</span></div>
-            <div class="count-lamps" aria-label="Count in beat ${countBeat || 0}">${Array.from({ length: pattern.beatsPerBar }, (_, i) => `<i class="${phase === 'counting' && i + 1 === countBeat ? 'lit' : ''}">${i + 1}</i>`).join('')}</div>
-            <button class="tap-pad" data-action="tap" aria-label="${phase === 'idle' || phase === 'result' ? 'Start take' : phase === 'playing' ? 'Tap rhythm' : 'Wait for count in'}"><span>${phase === 'playing' ? 'TAP' : phase === 'counting' ? 'COUNT' : 'START TAKE'}</span><small>${settings.inputMode === 'tap' ? 'Spacebar or screen' : 'Clap into microphone'}</small></button>
-            <div class="deck-tools"><button data-action="toggle-input" aria-pressed="${settings.inputMode === 'mic'}"><span aria-hidden="true">${settings.inputMode === 'mic' ? '◉' : '⌨'}</span> ${settings.inputMode === 'mic' ? 'Mic listening' : 'Tap input'}</button><button data-action="open-calibration"><span aria-hidden="true">±</span> Calibrate (${settings.calibrationMs > 0 ? '+' : ''}${settings.calibrationMs} ms)</button></div>
-          </div>
-          <p class="keyboard-help">Keyboard: <kbd>Space</kbd> starts/taps · <kbd>N</kbd> new pattern · inputs remain normally editable.</p>
-          <div id="live-status" class="sr-only" aria-live="polite">${statusText}</div>
-          ${resultPanel}
-        </div>
+function demoPage(): string {
+  return `<main id="main"><section class="demo-intro" aria-labelledby="page-title"><p class="kicker">Two-bar sample</p><h1 id="page-title" tabindex="-1">See a scored two-bar rhythm</h1><p>The marks show one early tap, on-time taps, late taps, and a missed tap.</p></section>${statusBanners()}${workbench()}</main>`;
+}
 
-        <aside class="settings" aria-labelledby="setup-title">
-          <p class="eyebrow">Set the drill</p><h2 id="setup-title">Your practice tape</h2>
-          <div class="field"><label for="meter">Meter</label><select id="meter" data-setting="meter" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}><option ${settings.meter === '4/4' ? 'selected' : ''}>4/4</option><option ${settings.meter === '3/4' ? 'selected' : ''}>3/4</option><option ${settings.meter === '6/8' ? 'selected' : ''}>6/8</option></select></div>
-          <div class="field"><label for="tempo">Tempo <output for="tempo">${settings.tempo} BPM</output></label><input id="tempo" data-setting="tempo" type="range" min="50" max="160" step="2" value="${settings.tempo}" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}></div>
-          <fieldset><legend>Length</legend><div class="segmented">${[2, 3, 4].map((bars) => `<label><input type="radio" name="bars" value="${bars}" data-setting="bars" ${settings.bars === bars ? 'checked' : ''} ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}><span>${bars} bars</span></label>`).join('')}</div></fieldset>
-          <div class="field"><label for="style">Style grammar</label><select id="style" data-setting="style" ${phase === 'counting' || phase === 'playing' ? 'disabled' : ''}>${(Object.keys(STYLE_LABELS) as Style[]).map((style) => `<option value="${style}" ${settings.style === style ? 'selected' : ''} ${!isUnlocked && !FREE_STYLES.includes(style) ? 'disabled' : ''}>${STYLE_LABELS[style]}${!isUnlocked && !FREE_STYLES.includes(style) ? ' — pack' : ''}</option>`).join('')}</select>${!isUnlocked ? '<button class="underlink" data-action="open-unlock">Get pop, swing + clave →</button>' : '<p class="field-note">All style grammars active.</p>'}</div>
-          <div class="level"><div><label for="level">Difficulty</label><span>${settings.difficulty} / 5</span></div><input id="level" data-setting="difficulty" type="range" min="1" max="5" value="${settings.difficulty}"><label class="check"><input type="checkbox" data-setting="lockLevel" ${settings.lockLevel ? 'checked' : ''}><span>Stay at this level</span></label></div>
-          <p class="settings-note">Patterns use original style grammars—not copied songs or random note soup.</p>
-        </aside>
-      </section>
+function legalPage(kind: 'privacy' | 'terms'): string {
+  if (kind === 'privacy') return `<main id="main" class="legal-page"><p class="kicker">Rhythm Reader</p><h1 id="page-title" tabindex="-1">Privacy</h1><p><strong>Effective 28 August 2026.</strong> Rhythm Reader has no advertising, analytics, account system, or tracking scripts.</p><h2>Data in your browser</h2><p>Practice settings, timing adjustment, daily totals, and scores use browser storage on this device.</p><p>Demo activity uses separate keys that start with <code>demo:</code>. Reset demo removes those keys.</p><h2>Microphone</h2><p>Microphone access is optional. Audio is checked in memory for claps and is not recorded or uploaded.</p><p>Screen and keyboard taps need no microphone permission.</p><h2>Your control</h2><p>Clear this site’s browser data to remove practice history and settings. Questions can be sent to <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a>.</p></main>`;
+  return `<main id="main" class="legal-page"><p class="kicker">Rhythm Reader</p><h1 id="page-title" tabindex="-1">Terms</h1><p><strong>Effective 28 August 2026.</strong> Rhythm Reader is a free practice aid provided as-is.</p><h2>Using the trainer</h2><p>The timing score is an estimate, not a professional assessment of musical ability.</p><p>Do not use the site to disrupt its service or other visitors.</p><h2>Practice material</h2><p>The notation is for rhythm practice. Do not treat it as a song transcription.</p><h2>Warranty and liability</h2><p>The software comes without warranties where the law permits. We are not liable for indirect loss from its use.</p><h2>Contact</h2><p>Questions can be sent to <a href="mailto:support@sociobot.in">support@sociobot.in</a>.</p></main>`;
+}
 
-      <section class="how" id="how" aria-labelledby="how-title">
-        <div><p class="eyebrow">Honest feedback</p><h2 id="how-title">The take gets marked where you played it.</h2></div>
-        <ol><li><span>01</span><b>Read</b><p>Scan the whole phrase and count a bar in your head.</p></li><li><span>02</span><b>Tap or clap</b><p>Use Space, the big pad, or your microphone after the count-in.</p></li><li><span>03</span><b>Read the edges</b><p>Every onset gets an early, on-time, late, or missed mark—plus a score.</p></li></ol>
-      </section>
+function notFoundPage(): string {
+  return `<main id="main" class="not-found"><div class="lost-tape" aria-hidden="true"><span>?</span></div><p class="kicker">Tape not found</p><h1 id="page-title" tabindex="-1">This page missed the beat</h1><p>The address does not match a Rhythm Reader page.</p><a class="button button--ink" href="/" data-route>Return to rhythm practice</a></main>`;
+}
 
-      <section class="practice-log" id="practice-log" aria-labelledby="log-title"><div><p class="eyebrow">Your last 14 days</p><h2 id="log-title">${streakDays(historyRecords)} day streak <span>· ${totalToday} takes today</span></h2></div><ol class="calendar">${calendar(historyRecords)}</ol></section>
+function statusBanners(): string {
+  return `<div id="connection" class="connection" role="status" ${navigator.onLine ? 'hidden' : ''}>You are offline. Rhythm practice is still available.</div><div id="storage-recovery" class="connection connection--recovery" role="status" ${storageRecoveryNotice ? '' : 'hidden'}>${storageRecoveryNotice}</div><div id="app-update" class="connection connection--update" role="status" ${updateAvailable ? '' : 'hidden'}>A new version is ready. <button data-action="activate-update">Reload the update</button></div>`;
+}
 
-      <section class="unlock" id="unlock" aria-labelledby="unlock-title"><div><p class="eyebrow">Side B style pack</p><h2 id="unlock-title">More musical words. One clean purchase.</h2><p>Unlock pop backbeat, swing, and 3–2 clave grammars plus future polyrhythm packs for <strong>$9 once</strong>. Core folk and march practice stays free.</p></div><div class="unlock-actions"><a class="button button--acid" href="${checkoutUrl()}">Buy the style pack</a><button class="underlink underlink--light" data-action="restore">Have a license? Restore it</button><p>Sociobot/Dodo is the merchant of record. No subscription.</p></div></section>
-    </main>
-    <footer><div class="footer-mark">RR<span>KEEP<br>COUNTING</span></div><div><p>Runs locally. No analytics, ads, accounts, or uploaded recordings.</p><p><a href="/privacy/">Privacy</a> <a href="/terms/">Terms</a> <a href="https://github.com/B-Divyesh/sf-rhythm-reader">Source</a></p><small>Original AI-assisted collage; no copyrighted music is used. © 2026 Rhythm Reader.</small></div></footer>
+const metadata: Record<Route, { title: string; description: string; path: string }> = {
+  home: { title: 'Rhythm Reader — tap rhythm reading practice', description: 'Practice short rhythms by tapping them and see early, on-time, late, and missed feedback.', path: '/' },
+  demo: { title: 'Demo — Rhythm Reader', description: 'Try a scored two-bar rhythm in an isolated sample demo.', path: '/demo' },
+  privacy: { title: 'Privacy — Rhythm Reader', description: 'How Rhythm Reader handles practice data and microphone input.', path: '/privacy' },
+  terms: { title: 'Terms — Rhythm Reader', description: 'Terms for using the free Rhythm Reader practice tool.', path: '/terms' },
+  'not-found': { title: 'Page not found — Rhythm Reader', description: 'This Rhythm Reader page could not be found.', path: '/404' },
+};
 
-    <dialog id="calibration-dialog" aria-labelledby="calibration-title"><button class="dialog-close" data-action="close-dialog" aria-label="Close calibration">×</button><p class="eyebrow">Device timing</p><h2 id="calibration-title">Tap with six clicks</h2><p>Use headphones if you can. Tap the pad or Space exactly when each click reaches your ears. We’ll subtract the measured device delay from future takes.</p><div class="calibration-meter" aria-hidden="true">${Array.from({ length: 6 }, (_, i) => `<i class="${calibrationSamples.length > i ? 'done' : ''}"></i>`).join('')}</div><button class="button button--ink calibration-tap" data-action="calibration-tap">${calibrationRunning ? 'Tap with click' : 'Start calibration'}</button><p id="calibration-status" role="status">Current offset: ${settings.calibrationMs} ms</p></dialog>
-    <dialog id="license-dialog" aria-labelledby="license-title"><button class="dialog-close" data-action="close-dialog" aria-label="Close license dialog">×</button><p class="eyebrow">Restore purchase</p><h2 id="license-title">Paste your license</h2><form id="license-form"><label for="license-token">License token</label><input id="license-token" name="license" autocomplete="off" required><button class="button button--ink" type="submit">Verify and unlock</button><p class="form-status" role="status">${licenseNotice}</p></form><p class="dialog-fine">The token stays in this browser. <a href="/privacy/">Read privacy details</a>.</p></dialog>
-  `;
+function setMetadata(): void {
+  const data = metadata[route];
+  const canonical = `https://rhythm-reader.sociobot.in${data.path}`;
+  document.title = data.title;
+  document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', data.description);
+  document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', canonical);
+  document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.setAttribute('content', data.title);
+  document.querySelector<HTMLMetaElement>('meta[property="og:description"]')?.setAttribute('content', data.description);
+  document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.setAttribute('content', canonical);
+  document.querySelector<HTMLMetaElement>('meta[name="twitter:title"]')?.setAttribute('content', data.title);
+  document.querySelector<HTMLMetaElement>('meta[name="twitter:description"]')?.setAttribute('content', data.description);
+}
+
+function dialogs(): string {
+  return `<dialog id="calibration-dialog" aria-labelledby="calibration-title"><button class="dialog-close" data-action="close-dialog" aria-label="Close timing adjustment">×</button><p class="eyebrow">Device timing</p><h2 id="calibration-title">Match six clicks</h2><p>Use headphones if possible. Tap the large button or Space when each click reaches your ears.</p><p>The saved adjustment is applied to later timing scores.</p><div class="calibration-meter" aria-hidden="true">${Array.from({ length: 6 }, (_, i) => `<i class="${calibrationSamples.length > i ? 'done' : ''}"></i>`).join('')}</div><button class="button button--ink calibration-tap" data-action="calibration-tap">${calibrationRunning ? 'Tap with the click' : 'Start timing adjustment'}</button><p id="calibration-status" role="status">Saved timing adjustment: ${settings.calibrationMs} ms</p></dialog>`;
+}
+
+function render(focusHeading = false): void {
+  setMetadata();
+  const content = route === 'home' ? homePage() : route === 'demo' ? demoPage() : route === 'privacy' ? legalPage('privacy') : route === 'terms' ? legalPage('terms') : notFoundPage();
+  app.innerHTML = `${demoBanner()}${header()}${content}${footer()}${route === 'home' || route === 'demo' ? dialogs() : ''}`;
+  document.querySelector('main')?.setAttribute('tabindex', '-1');
+  if (focusHeading) {
+    document.querySelector<HTMLElement>('#page-title')?.focus({ preventScroll: true });
+    const announcer = document.querySelector('#route-announcer');
+    if (announcer) announcer.textContent = document.title;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+}
+
+function activateRoute(nextRoute: Route, focusHeading = true): void {
+  stopMicrophone();
+  route = nextRoute;
+  loadPracticeState();
+  render(focusHeading);
+}
+
+function navigate(href: string): void {
+  const url = new URL(href, location.href);
+  history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  activateRoute(routeFromLocation());
+  if (url.hash) document.querySelector(url.hash)?.scrollIntoView();
 }
 
 function newPattern(): void {
@@ -180,30 +240,23 @@ function newPattern(): void {
   phase = 'idle'; result = null; taps = []; render();
 }
 
-async function beginTake(): Promise<void> {
+async function beginPractice(): Promise<void> {
   if (phase === 'counting' || phase === 'playing') return;
   try {
     await getAudio().resume();
     if (settings.inputMode === 'mic') await startMicrophone();
   } catch (error) {
-    settings.inputMode = 'tap'; saveSettings(settings);
-    render();
-    announce(error instanceof Error ? error.message : 'Microphone unavailable. Tap input is still ready.');
+    settings.inputMode = 'tap'; saveSettings(settings); render();
+    announce(error instanceof Error ? error.message : 'Microphone access failed. Screen and keyboard taps are ready.');
     return;
   }
   result = null; taps = []; phase = 'counting'; countBeat = 0; render();
   const beatMs = 60_000 / settings.tempo;
-  const countBeats = pattern.beatsPerBar;
-  for (let index = 0; index < countBeats; index += 1) {
-    window.setTimeout(() => {
-      countBeat = index + 1; clickSound(index === 0); render();
-    }, index * beatMs);
-  }
+  for (let index = 0; index < pattern.beatsPerBar; index += 1) window.setTimeout(() => { countBeat = index + 1; clickSound(index === 0); render(); }, index * beatMs);
   window.setTimeout(() => {
-    phase = 'playing'; countBeat = 0; takeOrigin = performance.now(); clickSound(true); render();
-    const duration = pattern.bars * pattern.beatsPerBar * beatMs;
-    window.setTimeout(finishTake, duration + Math.min(220, beatMs * .25));
-  }, countBeats * beatMs);
+    phase = 'playing'; countBeat = 0; practiceOrigin = performance.now(); clickSound(true); render();
+    window.setTimeout(finishPractice, pattern.bars * pattern.beatsPerBar * beatMs + Math.min(220, beatMs * .25));
+  }, pattern.beatsPerBar * beatMs);
 }
 
 function registerTap(): void {
@@ -216,12 +269,11 @@ function registerTap(): void {
   if (counter) counter.textContent = `${String(taps.length).padStart(2, '0')} TAPS`;
 }
 
-function finishTake(): void {
+function finishPractice(): void {
   if (phase !== 'playing') return;
   stopMicrophone();
   const beatMs = 60_000 / settings.tempo;
-  const expected = pattern.notes.map((note) => takeOrigin + note.beat * beatMs);
-  result = scoreTaps(expected, taps, beatMs, settings.calibrationMs);
+  result = scoreTaps(pattern.notes.map((note) => practiceOrigin + note.beat * beatMs), taps, beatMs, settings.calibrationMs);
   phase = 'result';
   historyRecords = recordDrill(result.score);
   if (!settings.lockLevel && result.score >= 90) settings.difficulty = Math.min(5, settings.difficulty + 1);
@@ -230,7 +282,7 @@ function finishTake(): void {
 }
 
 async function startMicrophone(): Promise<void> {
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not provide microphone input. Tap input is ready instead.');
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not provide microphone input. Screen and keyboard taps are ready.');
   micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false } });
   const context = getAudio();
   const source = context.createMediaStreamSource(micStream);
@@ -241,7 +293,7 @@ async function startMicrophone(): Promise<void> {
     analyser.getFloatTimeDomainData(data);
     const rms = Math.sqrt(data.reduce((sum, value) => sum + value * value, 0) / data.length);
     const now = performance.now();
-    if (phase === 'playing' && rms > .06 && now - micLastOnset > 120) { micLastOnset = now; registerTap(); }
+    if (phase === 'playing' && rms > .06 && now - micLastTap > 120) { micLastTap = now; registerTap(); }
     if (micStream) micFrame = requestAnimationFrame(listen);
   };
   listen();
@@ -249,7 +301,8 @@ async function startMicrophone(): Promise<void> {
 
 function stopMicrophone(): void {
   cancelAnimationFrame(micFrame);
-  micStream?.getTracks().forEach((track) => track.stop()); micStream = null;
+  micStream?.getTracks().forEach((track) => track.stop());
+  micStream = null;
 }
 
 function announce(message: string): void {
@@ -257,10 +310,7 @@ function announce(message: string): void {
   if (target) target.textContent = message;
 }
 
-function openDialog(id: string): void {
-  const dialog = document.querySelector<HTMLDialogElement>(id);
-  dialog?.showModal();
-}
+function openDialog(id: string): void { document.querySelector<HTMLDialogElement>(id)?.showModal(); }
 
 function startCalibration(): void {
   if (calibrationRunning) { calibrationTap(); return; }
@@ -268,7 +318,7 @@ function startCalibration(): void {
   calibrationRunning = true; calibrationSamples = [];
   const first = performance.now() + 700;
   calibrationExpected = Array.from({ length: 6 }, (_, index) => first + index * 650);
-  calibrationExpected.forEach((time, index) => window.setTimeout(() => { clickSound(index === 0); }, Math.max(0, time - performance.now())));
+  calibrationExpected.forEach((time, index) => window.setTimeout(() => clickSound(index === 0), Math.max(0, time - performance.now())));
   render(); openDialog('#calibration-dialog');
   window.setTimeout(finishCalibration, 6 * 650 + 900);
 }
@@ -276,10 +326,9 @@ function startCalibration(): void {
 function calibrationTap(): void {
   if (!calibrationRunning) { startCalibration(); return; }
   const now = performance.now();
-  const unused = calibrationExpected[calibrationSamples.length];
-  if (unused && Math.abs(now - unused) < 450) calibrationSamples.push(now - unused);
-  const meter = document.querySelectorAll('.calibration-meter i');
-  meter[calibrationSamples.length - 1]?.classList.add('done');
+  const expected = calibrationExpected[calibrationSamples.length];
+  if (expected && Math.abs(now - expected) < 450) calibrationSamples.push(now - expected);
+  document.querySelectorAll('.calibration-meter i')[calibrationSamples.length - 1]?.classList.add('done');
 }
 
 function finishCalibration(): void {
@@ -292,7 +341,7 @@ function finishCalibration(): void {
   }
   render(); openDialog('#calibration-dialog');
   const status = document.querySelector('#calibration-status');
-  if (status) status.textContent = calibrationSamples.length >= 4 ? `Saved offset: ${settings.calibrationMs} ms.` : 'Not enough matched taps. Try again in a quiet spot.';
+  if (status) status.textContent = calibrationSamples.length >= 4 ? `Saved timing adjustment: ${settings.calibrationMs} ms.` : 'Not enough taps matched. Try again in a quiet place.';
 }
 
 function settingChanged(target: HTMLInputElement | HTMLSelectElement): void {
@@ -302,29 +351,31 @@ function settingChanged(target: HTMLInputElement | HTMLSelectElement): void {
   else if (name === 'lockLevel') settings.lockLevel = (target as HTMLInputElement).checked;
   else if (name === 'meter') settings.meter = target.value as Meter;
   else if (name === 'style') settings.style = target.value as Style;
-  saveSettings(settings); pattern = generatePattern(settings.meter, settings.style, settings.bars, settings.difficulty); result = null; phase = 'idle'; render();
+  saveSettings(settings);
+  pattern = generatePattern(settings.meter, settings.style, settings.bars, settings.difficulty);
+  result = null; phase = 'idle'; render();
 }
 
 app.addEventListener('click', (event) => {
+  const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[data-route]');
+  if (link && event instanceof MouseEvent && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault(); navigate(link.href); return;
+  }
   const button = (event.target as HTMLElement).closest<HTMLElement>('[data-action]');
   if (!button) return;
   const action = button.dataset.action;
-  if (action === 'tap') phase === 'playing' ? registerTap() : void beginTake();
+  if (action === 'tap') phase === 'playing' ? registerTap() : void beginPractice();
   if (action === 'new-pattern' || action === 'stay') newPattern();
-  if (action === 'again') { phase = 'idle'; result = null; taps = []; render(); void beginTake(); }
+  if (action === 'again') { phase = 'idle'; result = null; taps = []; render(); void beginPractice(); }
   if (action === 'harder') { settings.difficulty = Math.min(5, settings.difficulty + 1); saveSettings(settings); newPattern(); }
   if (action === 'toggle-input') { settings.inputMode = settings.inputMode === 'tap' ? 'mic' : 'tap'; saveSettings(settings); render(); }
   if (action === 'open-calibration') openDialog('#calibration-dialog');
   if (action === 'calibration-tap') calibrationTap();
-  if (action === 'open-unlock') document.querySelector('#unlock')?.scrollIntoView({ behavior: 'smooth' });
-  if (action === 'restore') openDialog('#license-dialog');
   if (action === 'close-dialog') (button.closest('dialog') as HTMLDialogElement | null)?.close();
+  if (action === 'reset-demo') { resetDemoStorage(); activateRoute('demo', false); announce('The sample demo was reset.'); }
   if (action === 'activate-update') {
     const waiting = updateRegistration?.waiting;
-    if (waiting) {
-      reloadForUpdate = true;
-      waiting.postMessage({ type: 'SKIP_WAITING' });
-    }
+    if (waiting) { reloadForUpdate = true; waiting.postMessage({ type: 'SKIP_WAITING' }); }
   }
 });
 
@@ -335,55 +386,32 @@ app.addEventListener('change', (event) => {
 
 app.addEventListener('input', (event) => {
   const target = event.target as HTMLInputElement;
-  if (target.dataset.setting === 'tempo') {
-    const output = document.querySelector<HTMLOutputElement>('output[for="tempo"]');
-    if (output) output.value = `${target.value} BPM`;
-  }
-});
-
-app.addEventListener('submit', async (event) => {
-  if ((event.target as HTMLFormElement).id !== 'license-form') return;
-  event.preventDefault();
-  const form = event.target as HTMLFormElement;
-  const data = new FormData(form);
-  storeLicense(String(data.get('license') ?? ''));
-  licenseNotice = 'Checking license…'; render(); openDialog('#license-dialog');
-  const valid = await verifyLicense(true);
-  isUnlocked = valid === true;
-  licenseNotice = valid === true ? 'Style pack restored on this device.' : valid === null ? 'Could not reach the license service. Check your connection and try again.' : 'That license is not active for Rhythm Reader.';
-  render(); openDialog('#license-dialog');
+  if (target.dataset.setting === 'tempo') document.querySelector<HTMLOutputElement>('output[for="tempo"]')!.value = `${target.value} BPM`;
 });
 
 document.addEventListener('keydown', (event) => {
   const editable = (event.target as HTMLElement).matches('input, select, textarea');
   const openCalibration = document.querySelector<HTMLDialogElement>('#calibration-dialog')?.open;
-  if (event.code === 'Space' && !editable) {
+  if (event.code === 'Space' && !editable && (route === 'home' || route === 'demo')) {
     event.preventDefault();
-    if (openCalibration) calibrationTap(); else if (phase === 'playing') registerTap(); else if (phase === 'idle' || phase === 'result') void beginTake();
+    if (openCalibration) calibrationTap(); else if (phase === 'playing') registerTap(); else if (phase === 'idle' || phase === 'result') void beginPractice();
   }
-  if (event.key.toLowerCase() === 'n' && !editable && phase !== 'counting' && phase !== 'playing') newPattern();
+  if (event.key.toLowerCase() === 'n' && !editable && phase !== 'counting' && phase !== 'playing' && (route === 'home' || route === 'demo')) newPattern();
 });
 
+window.addEventListener('popstate', () => activateRoute(routeFromLocation()));
 window.addEventListener('online', () => { const banner = document.querySelector<HTMLElement>('#connection'); if (banner) banner.hidden = true; });
 window.addEventListener('offline', () => { const banner = document.querySelector<HTMLElement>('#connection'); if (banner) banner.hidden = false; });
 
+loadPracticeState();
 render();
-void verifyLicense().then((valid) => {
-  if (valid === null) return;
-  isUnlocked = valid;
-  if (!valid && settings.style && !FREE_STYLES.includes(settings.style)) { settings.style = 'folk'; saveSettings(settings); pattern = generatePattern(settings.meter, settings.style, settings.bars, settings.difficulty); licenseNotice = 'License no longer active. Free styles are still ready.'; }
-  render();
-});
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     void navigator.serviceWorker.register('/sw.js').then((registration) => {
       updateRegistration = registration;
       const showUpdate = (worker: ServiceWorker | null) => {
-        if (worker?.state === 'installed' && navigator.serviceWorker.controller) {
-          updateAvailable = true;
-          render();
-        }
+        if (worker?.state === 'installed' && navigator.serviceWorker.controller) { updateAvailable = true; render(); }
       };
       showUpdate(registration.waiting);
       registration.addEventListener('updatefound', () => {
@@ -392,7 +420,5 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       });
     });
   });
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadForUpdate) window.location.reload();
-  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloadForUpdate) window.location.reload(); });
 }

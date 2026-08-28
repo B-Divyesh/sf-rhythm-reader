@@ -51,6 +51,14 @@ Prompt used: “Overhead editorial flat-lay illustration for a rhythm sight-read
 
 Provenance: generated specifically for Rhythm Reader with the factory Azure OpenAI image deployment (`factory-image`), 27 August 2026. Original generated asset; no third-party source material. Source PNG and prompt sidecar live in `assets/src/`; production WebP is optimized in `public/art/`. The footer discloses AI-assisted original artwork.
 
+The 1200×630 social image is a center crop of that original production artwork. The Apple touch icon is a hand-composed raster version of the geometric cassette favicon. No additional third-party assets were introduced.
+
+## Route and small-screen treatment
+
+The home, demo, privacy, terms, and not-found routes share the cassette-zine masthead and dark tape-deck footer. The not-found page turns the cassette into a crooked question-mark label. Demo mode adds an acid-green proof strip above the masthead, matching the existing highlighter language.
+
+At 390 px, the playable score comes before settings, controls become full-width where needed, and all three navigation destinations remain visible. The hero keeps the job, audience, sample action, and three facts above its artwork. Sideways scrolling is limited to the notation sheet, where the label explains it.
+
 ## Why this fits
 
-The product asks a player to make short, repeatable “takes” and compare them honestly. A cassette deck supplies the physical model for record, rewind, replay, and take counters; a marked-up zine supplies the model for notation and feedback. The system is expressive without competing with the rhythm, and it avoids both conservatory formality and game-like synthetic randomness.
+The product asks a player to repeat short rhythms and compare each tap. A cassette deck supplies the physical model for record, rewind, and replay; a marked-up zine supplies the model for notation and feedback. The system is expressive without competing with the rhythm, and it avoids both conservatory formality and game-like synthetic randomness.
