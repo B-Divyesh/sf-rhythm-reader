@@ -1,37 +1,31 @@
-# Rhythm Reader polish round 2 handoff
+# Rhythm Reader review 3 handoff
 
 ## Outcome
 
-This repair resolves all findings in reviews 1 and 2. The cassette-zine identity, static Vite/TypeScript artifact class, offline PWA, local-first storage, and free trainer are retained. The complete finding map is in `.factory/polish-2.md`.
+Adversarial first-read review 3 is complete at commit `b6dd98a099e307c0ae0298d8bb404571dba4fdba`. The verdict in `.factory/review-3.md` is **FAIL** with one BLOCKING finding and three minor findings. No product code was changed.
 
-## Repair
+## Remaining findings
 
-- Reversed the input-mode action labels so each says what clicking will do.
-- Made **Start for real** discard the isolated demo namespace before returning home.
-- Replaced the shallow input/calibration claim with an end-to-end proof of Space, screen, microphone-stream, timed adjustment, reload persistence, and correction application.
-- Rewrote the three flagged README phrases and refreshed the verb-first catalog description.
+- **F-3-1 (BLOCKING):** Leaving `/demo` through shared navigation or browser back retains changed `demo:` keys and restores them on return, despite the “nothing is saved” banner.
+- **F-3-2:** “N shows a new rhythm” has no `.factory/claims.json` entry or tagged claim test.
+- **F-3-3:** **Raise the difficulty** remains active at level 5 and only replaces the result with another level-5 rhythm.
+- **F-3-4:** The score’s accessible SVG description says “on by … milliseconds” instead of “on time” and omits punctuation after the last tap.
 
-## Local verification
+## Verification performed
 
-- `npm ci`: passed with 0 reported vulnerabilities.
+- Fresh live cold reads at 390 × 844 and 1440 × 900.
+- One-click demo, sample result, Reset, Start for real, real/demo storage separation, shared-navigation exit, offline reload, and request interception.
+- Every `.factory/claims.json` command run separately from clean clone `/tmp/rhythm-reader-review3.KK54Zg`: 9/9 passed.
 - `npm test`: 13/13 passed.
-- `npm run build`: passed and generated `dist/`.
-- Every command listed in `.factory/claims.json`: 9/9 passed (`npm run test:claims`).
-- `npx playwright test --grep-invert @claim`: 19/19 passed, covering aXe route scans, keyboard/dialog behavior, 390 px layout and targets, routing/metadata, storage recovery, offline reload, and service-worker update.
-- Output budgets: JavaScript 28.94 kB raw / 11.13 kB gzip; CSS 18.46 kB raw / 5.14 kB gzip; both below the static-web budgets.
+- `npm run build`: passed; `dist/` generated. JS is 28.94 kB raw / 11.13 kB gzip; CSS is 18.46 kB raw / 5.14 kB gzip.
+- Non-claim Playwright suite: 19/19 passed.
+- Live AxeBuilder scan on `/`, `/demo`, `/privacy`, `/terms`, and an unknown route: zero violations.
+- Live link crawl: every rendered HTTP link returned 200; explicit `mailto:` links were excluded.
+- `/opt/fleet/lib/verify-url.sh`: passed with no console/page errors and valid title/lang/h1/main/alt/button labels.
+- Live root HTML and hashed JS/CSS SHA-256 values match the clean production build.
 
-## Deployment and live verification
+## Next steps
 
-- Deployed production `dist/` with `/opt/fleet/lib/deploy-static.sh rhythm-reader dist`.
-- Deployed source repair: `30a73b659bfbe6e91bac0a2d16f87c16eb04a398`.
-- Cold live checks passed at `https://rhythm-reader.sociobot.in/` and `/demo`. `verify-url.sh` recorded zero console/page errors, valid title/lang/main/one h1/alt text, and screenshots in `.factory/evidence/polish-2/`.
-- Live root SHA-256 equals the deployed build’s `dist/index.html`: `7cccb4619fee1214ed5c194f27d4f03f4a4f12ed76bad8fe4fc05602da055b5f`.
-- A live Playwright AxeBuilder scan found zero serious/critical violations on `/`, `/demo`, `/privacy`, `/terms`, and `/missing-tape`; every route had its expected title and exactly one h1, with no runtime errors.
-- Fresh live `?demo=1` began at demo-only 4/4 despite seeded real 3/4 state; **Start for real** left no `demo:` keys and retained the original real settings byte-for-byte.
-- Live mobile Lighthouse 12.8.2: Performance **99**, Accessibility **100**, LCP **1,559 ms**, CLS **0**, TBT **129 ms**. The complete report is `.factory/evidence/polish-2/lighthouse-mobile.json`.
+Centralize demo exit cleanup across all navigation paths, add the missing `N` claim test, make the level-5 action truthful, and repair the generated score description. Then rerun the exact checks listed in the review.
 
-## Known gaps
-
-None. Physical microphone onset accuracy still depends on a visitor’s hardware; the product and an oscillator-backed browser regression both exercise the detector and fallback path.
-
-Pre-existing `graphify-out/` changes were preserved and excluded from the repair commit.
+Pre-existing modified `graphify-out/` analysis files were preserved and excluded from this review.
