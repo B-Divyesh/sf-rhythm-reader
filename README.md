@@ -8,15 +8,15 @@ One-click sample: <https://rhythm-reader.sociobot.in/demo>
 
 ## What it includes
 
-- A completed sample with a score and four timing-mark types
+- A completed sample with early, on-time, late, and missed marks
 - Demo settings and history kept separate from real practice data
 - Offline use after the first visit
 - Practice history stored in this browser
 - Five rhythm styles, three time signatures, and patterns from two to four bars
-- Screen, Space-key, and microphone-clap input with a saved timing adjustment
+- Screen taps, Space-key taps, and microphone claps with a saved timing adjustment
 - The full trainer without a payment or account gate
 
-Practice data and microphone audio are not sent off-device. Microphone audio is checked in memory and is not recorded.
+Practice data and microphone audio are not sent anywhere else. Microphone audio is checked in memory and is not recorded.
 
 Rhythm Reader does not grade pitch, read MIDI, or provide song transcriptions.
 
@@ -41,7 +41,7 @@ Each visitor-facing promise and its test command is listed in [`.factory/claims.
 
 Deploy `dist/` as an Azure Static Web App. The factory owns DNS and deployment configuration.
 
-See [`.factory/brief.json`](.factory/brief.json) for scope. See [`.factory/design.md`](.factory/design.md) for the visual system and art provenance.
+See [`.factory/brief.json`](.factory/brief.json) for scope. See [`.factory/design.md`](.factory/design.md) for the visual system and how the artwork was made.
 
 ## License
 

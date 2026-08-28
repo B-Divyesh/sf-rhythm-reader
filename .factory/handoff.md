@@ -1,30 +1,31 @@
-# Rhythm Reader review 2 handoff
+# Rhythm Reader polish round 2 handoff
 
 ## Outcome
 
-Adversarial first-read review 2 is complete at commit `ab23cbb9ebffe9b775b38275e60e4d9e4839aefa`. Verdict: **PASS** with zero blockers and three minor findings. The full evidence and copy audit are in `.factory/review-2.md`. No product code was changed.
+This repair resolves all findings in reviews 1 and 2. The cassette-zine identity, static Vite/TypeScript artifact class, offline PWA, local-first storage, and free trainer are retained. The complete finding map is in `.factory/polish-2.md`.
 
-## Verification performed
+## Repair
 
-- Opened the live site cold in fresh Chromium contexts at 390 × 844 and 1440 × 900.
-- Entered the sample in one click and verified the scored result, all four timing markers, persistent banner, reset, real-data isolation, and intercepted network traffic.
-- Crawled rendered links and checked all routes, metadata assets, 404 design, client navigation, browser history, and route focus.
-- Ran `/opt/fleet/lib/verify-url.sh` against the live site.
-- Ran axe against home, demo, privacy, terms, and an unknown route: zero serious/critical findings.
-- In clean clone `/tmp/rhythm-reader-review2.njNEpC`, ran `npm ci`, all nine registered claim commands separately, `npm test`, `npm run build`, and `npm run test:browser`.
+- Reversed the input-mode action labels so each says what clicking will do.
+- Made **Start for real** discard the isolated demo namespace before returning home.
+- Replaced the shallow input/calibration claim with an end-to-end proof of Space, screen, microphone-stream, timed adjustment, reload persistence, and correction application.
+- Rewrote the three flagged README phrases and refreshed the verb-first catalog description.
 
-## Results
+## Local verification
 
-- Claim commands: 9/9 passed.
-- Unit tests: 13/13 passed.
-- Browser tests: 28/28 passed.
-- Production build: passed; `dist/` generated; JS 28.89 kB raw / 11.11 kB gzip.
-- Live verifier: HTTP 200, correct title/lang/main/h1/alt labels, no console or page errors.
+- `npm ci`: passed with 0 reported vulnerabilities.
+- `npm test`: 13/13 passed.
+- `npm run build`: passed and generated `dist/`.
+- Every command listed in `.factory/claims.json`: 9/9 passed (`npm run test:claims`).
+- `npx playwright test --grep-invert @claim`: 19/19 passed, covering aXe route scans, keyboard/dialog behavior, 390 px layout and targets, routing/metadata, storage recovery, offline reload, and service-worker update.
+- Output budgets: JavaScript 28.94 kB raw / 11.13 kB gzip; CSS 18.46 kB raw / 5.14 kB gzip; both below the static-web budgets.
 
-## Remaining minor findings
+## Deployment and live verification
 
-1. The input-mode toggle labels the current mode rather than the result of clicking.
-2. **Start for real** leaves isolated `demo:` keys behind instead of discarding them.
-3. `@claim:input-calibration` does not exercise a microphone clap or complete, persist, and apply a timing adjustment.
+Deployment, cold live checks, screenshots, and the final commit are appended after the work-order deploy completes.
 
-Pre-existing modified and untracked `graphify-out/` files were left untouched and are not part of the review commit.
+## Known gaps
+
+None. Physical microphone onset accuracy still depends on a visitor’s hardware; the product and an oscillator-backed browser regression both exercise the detector and fallback path.
+
+Pre-existing `graphify-out/` changes were preserved and excluded from the repair commit.
