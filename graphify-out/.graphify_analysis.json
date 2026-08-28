@@ -224,13 +224,13 @@
       "degree": 7
     },
     {
-      "id": "src_main_finishtake",
-      "label": "finishTake()",
+      "id": "src_main_startcalibration",
+      "label": "startCalibration()",
       "degree": 7
     },
     {
-      "id": "src_main_startcalibration",
-      "label": "startCalibration()",
+      "id": "src_main_finishtake",
+      "label": "finishTake()",
       "degree": 7
     },
     {
@@ -239,8 +239,8 @@
       "degree": 7
     },
     {
-      "id": "package_scripts",
-      "label": "scripts",
+      "id": "src_storage_recorddrill",
+      "label": "recordDrill()",
       "degree": 6
     }
   ],
@@ -268,11 +268,11 @@
       "why": "bridges separate communities"
     },
     {
-      "source": "render()",
-      "target": "checkoutUrl()",
+      "source": "finishTake()",
+      "target": "recordDrill()",
       "source_files": [
         "src/main.ts",
-        "src/license.ts"
+        "src/storage.ts"
       ],
       "confidence": "EXTRACTED",
       "relation": "calls",
@@ -290,7 +290,7 @@
       "why": "bridges separate communities"
     },
     {
-      "source": "beginTake()",
+      "source": "finishCalibration()",
       "target": "saveSettings()",
       "source_files": [
         "src/main.ts",
