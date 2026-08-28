@@ -6,6 +6,7 @@ async function waitForControl(page: import('@playwright/test').Page, path = '/')
   await page.goto(path);
   await expect(page.locator('h1')).toBeVisible();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await page.waitForFunction(() => document.documentElement.dataset.serviceWorkerReady === 'true');
 }
 
 test('a fresh install reloads the complete trainer offline without an HTML asset fallback', async ({ browser }) => {
