@@ -1,3 +1,25 @@
+# Rhythm Reader handoff — adversarial review 1
+
+## Status: **FAIL**
+
+On 28 August 2026, a read-only first-visitor review was completed against the live site at <https://rhythm-reader.sociobot.in>. The full evidence and copy audit are in [`.factory/review-1.md`](review-1.md).
+
+### What was verified
+
+- Fresh mobile (390 px) and desktop visits, live route/metadata checks, link crawl, and a direct `?demo=1` storage-isolation check.
+- A clean local clone at `c7011136ddd1ae591f784cfb0605f4d6e94e85e5`: `npm test` (12 passed), `npm run build` (passed), and `npm run test:browser` (4 passed).
+- The review made no product-code changes. This handoff and the review are the only intended committed changes; pre-existing `graphify-out/` modifications were left untouched.
+
+### Known blockers / next steps
+
+1. Implement a real, isolated sample demo with reset/start-real controls and documentation.
+2. Add `.factory/claims.json` and clean-state, observable claim tests.
+3. Repair/register the style-pack checkout endpoint; the live CTA returned 404.
+4. Add real `/demo` and designed `/404` routes plus canonical/OG/Twitter, robots, sitemap, and Apple-touch artifacts.
+5. Replace the slogan-led first screen with a plain job, audience, and sample CTA; simplify inconsistent jargon.
+
+---
+
 # Rhythm Reader handoff — verification 3 PASS
 
 ## Status: **PASS** — deployed static web
