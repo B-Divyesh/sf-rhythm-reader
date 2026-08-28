@@ -68,3 +68,21 @@ test('parseable malformed saved settings and history recover without blanking th
   ]);
   expect(errors).toEqual([]);
 });
+
+test('a level-five result offers an honest level-five next action', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('demo:rr_settings:v1', JSON.stringify({
+      meter: '4/4', style: 'pop', bars: 2, tempo: 88, difficulty: 5,
+      lockLevel: true, inputMode: 'tap', calibrationMs: 0,
+    }));
+  });
+  await page.goto('/demo');
+  await expect(page.getByRole('heading', { name: /Pop backbeat · level 5/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Raise the difficulty' })).toHaveCount(0);
+  const next = page.getByRole('button', { name: 'Show a new level-5 rhythm' });
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page.locator('.result-sheet')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /Pop backbeat · level 5/ })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('demo:rr_settings:v1') ?? '{}').difficulty)).toBe(5);
+});

@@ -35,6 +35,7 @@ let calibrationRunning = false;
 let updateAvailable = false;
 let updateRegistration: ServiceWorkerRegistration | null = null;
 let reloadForUpdate = false;
+const DEMO_RELOAD_SNAPSHOT = 'demo:reload-snapshot';
 
 function routeFromLocation(): Route {
   const path = window.location.pathname.replace(/\/+$/u, '') || '/';
@@ -52,10 +53,52 @@ function sampleResult(activePattern: Pattern): ScoreResult {
   return scoreTaps(expected, sampleTaps, beatMs);
 }
 
+function navigationType(): string | undefined {
+  return (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type;
+}
+
+function restoreDemoAfterReload(): void {
+  try {
+    const raw = sessionStorage.getItem(DEMO_RELOAD_SNAPSHOT);
+    sessionStorage.removeItem(DEMO_RELOAD_SNAPSHOT);
+    if (!raw || navigationType() !== 'reload') return;
+    const snapshot = JSON.parse(raw) as { settings?: string | null; history?: string | null };
+    if (snapshot.settings !== null && snapshot.settings !== undefined) localStorage.setItem('demo:rr_settings:v1', snapshot.settings);
+    if (snapshot.history !== null && snapshot.history !== undefined) localStorage.setItem('demo:rr_history:v1', snapshot.history);
+  } catch {
+    sessionStorage.removeItem(DEMO_RELOAD_SNAPSHOT);
+  }
+}
+
+function discardDemoOutsideSpa(): void {
+  if (route !== 'demo') return;
+  try {
+    const settingsSnapshot = localStorage.getItem('demo:rr_settings:v1');
+    const historySnapshot = localStorage.getItem('demo:rr_history:v1');
+    if (settingsSnapshot !== null || historySnapshot !== null) {
+      sessionStorage.setItem(DEMO_RELOAD_SNAPSHOT, JSON.stringify({ settings: settingsSnapshot, history: historySnapshot }));
+    }
+  } catch { /* Local-first demo cleanup remains safe if session storage is unavailable. */ }
+  resetDemoStorage();
+}
+
+function restoreFreshDemoAfterExternalExit(): void {
+  try {
+    if (route === 'demo' && localStorage.getItem('demo:rr_settings:v1') === null && localStorage.getItem('demo:rr_history:v1') === null) {
+      activateRoute('demo', false);
+    }
+  } catch { /* A storage-restricted browser still receives the seeded in-memory demo. */ }
+}
+
 function loadPracticeState(): void {
   demoMode = route === 'demo';
   configureStorage(demoMode);
-  if (demoMode) seedDemoStorage();
+  if (demoMode) {
+    restoreDemoAfterReload();
+    seedDemoStorage();
+  } else {
+    sessionStorage.removeItem(DEMO_RELOAD_SNAPSHOT);
+  }
   settings = readSettings();
   historyRecords = readHistory();
   storageRecoveryNotice = takeStorageRecoveryNotice();
@@ -119,7 +162,10 @@ function scoreSvg(activePattern: Pattern, activeResult: ScoreResult | null): str
     }
   });
   const description = activeResult
-    ? activeResult.notes.map((note, index) => `Tap ${index + 1}: ${note.kind}${note.offsetMs === undefined ? '' : ` by ${Math.round(Math.abs(note.offsetMs))} milliseconds`}`).join('. ')
+    ? activeResult.notes.map((note, index) => {
+      const kind = note.kind === 'on' ? 'on time' : note.kind;
+      return `Tap ${index + 1}: ${kind}${note.offsetMs === undefined ? '' : ` by ${Math.round(Math.abs(note.offsetMs))} milliseconds`}.`;
+    }).join(' ')
     : `${activePattern.bars} bars in ${activePattern.meter} with ${activePattern.notes.length} taps. Count ${spokenCount(activePattern)}.`;
   return `<svg class="notation" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="score-title score-desc"><title id="score-title">${STYLE_LABELS[activePattern.style]} rhythm</title><desc id="score-desc">${description}</desc>${content}</svg>`;
 }
@@ -153,7 +199,10 @@ function demoBanner(): string {
 
 function resultPanel(): string {
   if (!result) return '';
-  return `<section class="result-sheet" aria-labelledby="result-title"><div><p class="eyebrow">${demoMode ? 'Sample result' : 'Practice result'}</p><h2 id="result-title"><span>${result.score}%</span> ${result.message}</h2></div><dl class="practice-stats"><div><dt>Average timing gap</dt><dd>${result.meanAbsOffset} ms</dd></div><div><dt>Extra taps</dt><dd>${result.extraTaps}</dd></div></dl><div class="legend" aria-label="Timing marker key"><span class="early">E early</span><span class="on">ON on time</span><span class="late">L late</span><span class="missed">× missed</span></div><div class="result-actions"><button class="button button--ink" data-action="again">Try this rhythm again</button><button class="button" data-action="stay">Show a new rhythm</button><button class="button" data-action="harder">Raise the difficulty</button></div></section>`;
+  const levelAction = settings.difficulty >= 5
+    ? '<button class="button" data-action="stay">Show a new level-5 rhythm</button>'
+    : '<button class="button" data-action="harder">Raise the difficulty</button>';
+  return `<section class="result-sheet" aria-labelledby="result-title"><div><p class="eyebrow">${demoMode ? 'Sample result' : 'Practice result'}</p><h2 id="result-title"><span>${result.score}%</span> ${result.message}</h2></div><dl class="practice-stats"><div><dt>Average timing gap</dt><dd>${result.meanAbsOffset} ms</dd></div><div><dt>Extra taps</dt><dd>${result.extraTaps}</dd></div></dl><div class="legend" aria-label="Timing marker key"><span class="early">E early</span><span class="on">ON on time</span><span class="late">L late</span><span class="missed">× missed</span></div><div class="result-actions"><button class="button button--ink" data-action="again">Try this rhythm again</button><button class="button" data-action="stay">Show a new rhythm</button>${levelAction}</div></section>`;
 }
 
 function workbench(): string {
@@ -223,6 +272,7 @@ function render(focusHeading = false): void {
 
 function activateRoute(nextRoute: Route, focusHeading = true): void {
   stopMicrophone();
+  if (route === 'demo' && nextRoute !== 'demo') resetDemoStorage();
   route = nextRoute;
   loadPracticeState();
   render(focusHeading);
@@ -373,7 +423,7 @@ app.addEventListener('click', (event) => {
   if (action === 'calibration-tap') calibrationTap();
   if (action === 'close-dialog') (button.closest('dialog') as HTMLDialogElement | null)?.close();
   if (action === 'reset-demo') { resetDemoStorage(); activateRoute('demo', false); announce('The sample demo was reset.'); }
-  if (action === 'start-real') { resetDemoStorage(); navigate('/'); }
+  if (action === 'start-real') navigate('/');
   if (action === 'activate-update') {
     const waiting = updateRegistration?.waiting;
     if (waiting) { reloadForUpdate = true; waiting.postMessage({ type: 'SKIP_WAITING' }); }
@@ -401,6 +451,22 @@ document.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('popstate', () => activateRoute(routeFromLocation()));
+window.addEventListener('beforeunload', discardDemoOutsideSpa);
+window.addEventListener('pagehide', discardDemoOutsideSpa);
+window.addEventListener('pageshow', () => {
+  window.setTimeout(() => {
+    if (route === 'demo' && navigationType() === 'back_forward') {
+      resetDemoStorage();
+      sessionStorage.removeItem(DEMO_RELOAD_SNAPSHOT);
+      activateRoute('demo', false);
+    } else {
+      restoreFreshDemoAfterExternalExit();
+    }
+  }, 0);
+});
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') restoreFreshDemoAfterExternalExit();
+});
 window.addEventListener('online', () => { const banner = document.querySelector<HTMLElement>('#connection'); if (banner) banner.hidden = true; });
 window.addEventListener('offline', () => { const banner = document.querySelector<HTMLElement>('#connection'); if (banner) banner.hidden = false; });
 

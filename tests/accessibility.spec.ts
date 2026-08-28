@@ -38,3 +38,11 @@ test('content remains contained when text size doubles', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
 });
+
+test('the score description uses plain timing words and complete sentences', async ({ page }) => {
+  await page.goto('/demo');
+  const description = await page.locator('.notation desc').textContent();
+  expect(description).toContain('on time by');
+  expect(description).not.toMatch(/: on by/u);
+  expect(description?.trim()).toMatch(/\.$/u);
+});

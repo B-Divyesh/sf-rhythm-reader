@@ -12,6 +12,8 @@ test('@claim:timing-feedback the sample shows a score and every timing mark', as
 });
 
 test('@claim:demo-isolation demo settings never read or overwrite real practice data', async ({ page }) => {
+  const realSettings = JSON.stringify({ meter: '3/4', style: 'march', bars: 4, tempo: 100, difficulty: 4, lockLevel: false, inputMode: 'tap', calibrationMs: 20 });
+  const realHistory = JSON.stringify([{ date: '2026-08-28', drills: 9, best: 99 }]);
   await page.addInitScript(() => {
     localStorage.setItem('rr_settings:v1', JSON.stringify({ meter: '3/4', style: 'march', bars: 4, tempo: 100, difficulty: 4, lockLevel: false, inputMode: 'tap', calibrationMs: 20 }));
     localStorage.setItem('rr_history:v1', JSON.stringify([{ date: '2026-08-28', drills: 9, best: 99 }]));
@@ -30,12 +32,59 @@ test('@claim:demo-isolation demo settings never read or overwrite real practice 
   expect(JSON.parse(afterReset['rr_history:v1'] ?? '[]')[0].drills).toBe(9);
   expect(Object.keys(afterReset).filter((key) => key.startsWith('demo:')).sort()).toEqual(['demo:rr_history:v1', 'demo:rr_settings:v1']);
 
+  const expectRealDataAndEmptyDemo = async (): Promise<void> => {
+    const state = await page.evaluate(() => ({
+      local: Object.fromEntries(Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)])),
+      session: Object.fromEntries(Object.keys(sessionStorage).map((key) => [key, sessionStorage.getItem(key)])),
+    }));
+    expect(Object.keys(state.local).filter((key) => key.startsWith('demo:'))).toEqual([]);
+    expect(Object.keys(state.session).filter((key) => key.startsWith('demo:'))).toEqual([]);
+    expect(state.local['rr_settings:v1']).toBe(realSettings);
+    expect(state.local['rr_history:v1']).toBe(realHistory);
+  };
+  const changeDemoAndReturnToFreshSample = async (leave: () => Promise<void>): Promise<void> => {
+    await page.goto('/demo');
+    await page.locator('#meter').selectOption('6/8');
+    await leave();
+    await expectRealDataAndEmptyDemo();
+    await page.goto('/demo');
+    await expect(page.locator('#meter')).toHaveValue('4/4');
+  };
+
   await page.getByRole('link', { name: 'Start for real' }).click();
   await expect(page).toHaveURL('/');
-  const afterExit = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)])));
-  expect(Object.keys(afterExit).filter((key) => key.startsWith('demo:'))).toEqual([]);
-  expect(afterExit['rr_settings:v1']).toBe(beforeReset['rr_settings:v1']);
-  expect(afterExit['rr_history:v1']).toBe(beforeReset['rr_history:v1']);
+  await expectRealDataAndEmptyDemo();
+  await changeDemoAndReturnToFreshSample(async () => page.getByRole('link', { name: 'Rhythm Reader home' }).click());
+  await changeDemoAndReturnToFreshSample(async () => page.locator('.masthead').getByRole('link', { name: 'Privacy' }).click());
+  await changeDemoAndReturnToFreshSample(async () => page.locator('.masthead').getByRole('link', { name: 'How it works' }).click());
+  await changeDemoAndReturnToFreshSample(async () => page.locator('footer').getByRole('link', { name: 'Terms' }).click());
+  await changeDemoAndReturnToFreshSample(async () => { await page.goto('/privacy'); });
+
+  await page.locator('#meter').selectOption('6/8');
+  await page.goto('/privacy');
+  expect(await page.evaluate(() => localStorage.getItem('demo:rr_settings:v1'))).toBeNull();
+  expect(await page.evaluate(() => sessionStorage.getItem('demo:reload-snapshot'))).toBeNull();
+  await page.goBack();
+  await expect(page.locator('#meter')).toHaveValue('4/4');
+  expect(await page.evaluate(() => localStorage.getItem('rr_settings:v1'))).toBe(realSettings);
+  expect(await page.evaluate(() => localStorage.getItem('rr_history:v1'))).toBe(realHistory);
+
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Demo', exact: true }).click();
+  await page.locator('#meter').selectOption('6/8');
+  await page.goBack();
+  await expect(page).toHaveURL('/');
+  await expectRealDataAndEmptyDemo();
+  await page.goto('/demo');
+  await expect(page.locator('#meter')).toHaveValue('4/4');
+});
+
+test('@claim:keyboard-shortcuts N shows a different rhythm while practice is idle', async ({ page }) => {
+  await page.goto('/demo');
+  const before = await page.locator('.score-heading .eyebrow').textContent();
+  await page.keyboard.press('N');
+  await expect(page.locator('.deck')).toHaveAttribute('data-phase', 'idle');
+  await expect.poll(() => page.locator('.score-heading .eyebrow').textContent()).not.toBe(before);
 });
 
 test('@claim:offline-reload the demo reloads after the first visit without a network', async ({ browser }) => {
