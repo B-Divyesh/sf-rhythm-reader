@@ -1,8 +1,10 @@
 # Rhythm Reader — adversarial first-read review 3
 
-**Date:** 28 August 2026  
-**Target:** <https://rhythm-reader.sociobot.in>  
-**Reviewed commit:** `b6dd98a099e307c0ae0298d8bb404571dba4fdba`  
+**Date:** 28 August 2026
+
+**Target:** <https://rhythm-reader.sociobot.in>
+
+**Reviewed commit:** `b6dd98a099e307c0ae0298d8bb404571dba4fdba`
 **Verdict:** **FAIL**
 
 One BLOCKING finding and three minor findings remain. The cold first screen is clear, the sample is immediately useful, all nine registered claim commands pass, real practice data stays isolated, and the route/accessibility checks pass. The demo still saves changed sample state when a visitor leaves through ordinary site navigation, one keyboard claim is absent from the claims registry, a result button promises an impossible level increase at level 5, and the score’s screen-reader description exposes the internal word “on” instead of “on time.”
