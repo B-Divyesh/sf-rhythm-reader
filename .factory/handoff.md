@@ -1,4 +1,21 @@
-# Rhythm Reader polish round 3 handoff
+# Rhythm Reader review 4 handoff
+
+## Review 4 outcome
+
+Independent adversarial review 4 passed with zero findings. No product code or assets changed. The committed report is `.factory/review-4.md`.
+
+## Review 4 verification
+
+- Cold live mobile and desktop checks confirmed the first-screen job, audience, sample action, facts, and no console errors.
+- Live demo checks confirmed completed sample data, persistent banner, Reset, Start for real, real-key preservation, exit cleanup, offline behavior, and no cross-origin demo request.
+- Clean external clone `/tmp/rhythm-reader-review4.QuiB8H` at `ed05925bf3b43d3e30b18f1573f6d8af6eb7c00d`: `npm ci`; every listed claims command separately; `npm run test:claims` (10 passed); `npm test` (13 passed); `npm run build`; and `npm run test:browser` (31 passed).
+- Live routes, metadata, designed not-found state, links, assets, headers, accessibility suite, and AI/provider-key surface were checked.
+
+## Review 4 known gaps and next steps
+
+None. Pre-existing `graphify-out/` analysis-file modifications were preserved unstaged.
+
+## Prior polish 3 handoff
 
 ## Outcome
 
