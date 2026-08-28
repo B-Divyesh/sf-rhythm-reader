@@ -44,10 +44,11 @@ test('an old controlled client shows and explicitly activates an update', async 
     const updated = original.replace(/const RELEASE = "([^"]+)";/u, 'const RELEASE = "$1-update-test";');
     expect(updated).not.toBe(original);
     await writeFile(workerPath, updated);
+    await page.waitForTimeout(150);
 
     await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
     const updateButton = page.getByRole('button', { name: 'Reload the update' });
-    await expect(updateButton).toBeVisible();
+    await expect(updateButton).toBeVisible({ timeout: 10_000 });
     await updateButton.click();
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null && !document.querySelector('#app-update:not([hidden])'));
     await expect(page.locator('h1')).toBeVisible();

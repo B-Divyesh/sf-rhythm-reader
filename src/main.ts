@@ -408,7 +408,7 @@ render();
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js').then((registration) => {
+    void navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
       updateRegistration = registration;
       const showUpdate = (worker: ServiceWorker | null) => {
         if (worker?.state === 'installed' && navigator.serviceWorker.controller) { updateAvailable = true; render(); }
