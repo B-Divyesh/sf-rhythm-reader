@@ -22,4 +22,4 @@ Base review commit: `4624f9dea877edf141a506c0144e3fdf0f452774`. This document ma
 - `npm run test:claims`: 9/9 passed.
 - `npx playwright test --grep-invert @claim`: 19/19 passed (accessibility, keyboard, mobile layout, routing, storage recovery, PWA offline/update).
 
-Live screenshots are stored under `.factory/evidence/polish-2/`; the deployed root SHA-256 matches `dist/index.html` (`7cccb4619fee1214ed5c194f27d4f03f4a4f12ed76bad8fe4fc05602da055b5f`).
+Live screenshots are stored under `.factory/evidence/polish-2/`; the deployed root SHA-256 matches `dist/index.html` (`7cccb4619fee1214ed5c194f27d4f03f4a4f12ed76bad8fe4fc05602da055b5f`). Live mobile Lighthouse 12.8.2 scored 99 performance / 100 accessibility (LCP 1,559 ms, CLS 0, TBT 129 ms); see `evidence/polish-2/lighthouse-mobile.json`.

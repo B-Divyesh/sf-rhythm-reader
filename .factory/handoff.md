@@ -28,6 +28,7 @@ This repair resolves all findings in reviews 1 and 2. The cassette-zine identity
 - Live root SHA-256 equals the deployed build’s `dist/index.html`: `7cccb4619fee1214ed5c194f27d4f03f4a4f12ed76bad8fe4fc05602da055b5f`.
 - A live Playwright AxeBuilder scan found zero serious/critical violations on `/`, `/demo`, `/privacy`, `/terms`, and `/missing-tape`; every route had its expected title and exactly one h1, with no runtime errors.
 - Fresh live `?demo=1` began at demo-only 4/4 despite seeded real 3/4 state; **Start for real** left no `demo:` keys and retained the original real settings byte-for-byte.
+- Live mobile Lighthouse 12.8.2: Performance **99**, Accessibility **100**, LCP **1,559 ms**, CLS **0**, TBT **129 ms**. The complete report is `.factory/evidence/polish-2/lighthouse-mobile.json`.
 
 ## Known gaps
 
