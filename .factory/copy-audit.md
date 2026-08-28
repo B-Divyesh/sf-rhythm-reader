@@ -6,6 +6,7 @@ Audit date: 28 August 2026. Hyphenated terms count as one word. No listed senten
 
 | Words | Sentence | Result |
 | ---: | --- | --- |
+| 6 | Practice reading rhythms by tapping them | Covered by `timing-feedback` |
 | 13 | For adult pianists, guitarists, and drummers who want clear timing feedback before rehearsal. | Pass |
 | 7 | See a scored two-bar rhythm right away. | Pass |
 | 6 | Works offline after your first visit. | Pass |
@@ -39,6 +40,7 @@ Audit date: 28 August 2026. Hyphenated terms count as one word. No listed senten
 | 7 | Changes stay separate from your practice history. | Covered by `demo-isolation` |
 | 5 | The sample demo was reset. | Pass |
 | 8 | Collage created for Rhythm Reader with AI assistance. | Covered by `art-provenance` |
+| 7 | Practice rhythm patterns and check each tap. | Covered by `timing-feedback` |
 
 The generated score description uses complete forms: `Tap n: early by n milliseconds.`, `Tap n: on time by n milliseconds.`, `Tap n: late by n milliseconds.`, and `Tap n: missed.` The accessibility regression verifies the wording and final punctuation.
 
