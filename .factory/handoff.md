@@ -22,7 +22,12 @@ This repair resolves all findings in reviews 1 and 2. The cassette-zine identity
 
 ## Deployment and live verification
 
-Deployment, cold live checks, screenshots, and the final commit are appended after the work-order deploy completes.
+- Deployed production `dist/` with `/opt/fleet/lib/deploy-static.sh rhythm-reader dist`.
+- Deployed source repair: `30a73b659bfbe6e91bac0a2d16f87c16eb04a398`.
+- Cold live checks passed at `https://rhythm-reader.sociobot.in/` and `/demo`. `verify-url.sh` recorded zero console/page errors, valid title/lang/main/one h1/alt text, and screenshots in `.factory/evidence/polish-2/`.
+- Live root SHA-256 equals the deployed build’s `dist/index.html`: `7cccb4619fee1214ed5c194f27d4f03f4a4f12ed76bad8fe4fc05602da055b5f`.
+- A live Playwright AxeBuilder scan found zero serious/critical violations on `/`, `/demo`, `/privacy`, `/terms`, and `/missing-tape`; every route had its expected title and exactly one h1, with no runtime errors.
+- Fresh live `?demo=1` began at demo-only 4/4 despite seeded real 3/4 state; **Start for real** left no `demo:` keys and retained the original real settings byte-for-byte.
 
 ## Known gaps
 
